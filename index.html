@@ -162,7 +162,13 @@
                 } catch (e) {}
             }
             if (selectedChannels.length < 4) {
-                selectedChannels = availableChannels.slice(0, 4);
+                // Default to working channels (exclude Channel 12 which requires dynamic handshake)
+                selectedChannels = availableChannels.filter(c =>
+                    !c.name.includes("12") && (c.name.includes("11") || c.name.includes("13") || c.name.includes("14") || c.name.includes("CNN"))
+                ).slice(0, 4);
+                if (selectedChannels.length === 0) {
+                    selectedChannels = availableChannels.filter(c => !c.name.includes("12")).slice(0, 4);
+                }
             }
             initGrid();
         }
@@ -192,10 +198,13 @@
                     const hlsConfig = {
                         enableWorker: true,
                         lowLatencyMode: false,
+                        liveSyncDurationCount: 3,
+                        liveMaxLatencyDurationCount: 10,
+                        maxLiveSyncPlaybackRate: 1.2,
+                        maxBufferLength: 30,
+                        maxMaxBufferLength: 60,
                         startLevel: -1,
                         autoStartLoad: true,
-                        maxBufferLength: 15,
-                        maxMaxBufferLength: 30,
                         manifestLoadingTimeOut: 10000,
                         manifestLoadingMaxRetry: 4,
                         levelLoadingTimeOut: 10000
@@ -219,9 +228,15 @@
                     hls.on(Hls.Events.ERROR, async (event, data) => {
                         if (data.fatal) {
                             switch (data.type) {
-                                case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
-                                case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
-                                default: hls.destroy(); break;
+                                case Hls.ErrorTypes.NETWORK_ERROR:
+                                    hls.startLoad();
+                                    break;
+                                case Hls.ErrorTypes.MEDIA_ERROR:
+                                    hls.recoverMediaError();
+                                    break;
+                                default:
+                                    hls.destroy();
+                                    break;
                             }
                         } else if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
                             hls.startLoad();
