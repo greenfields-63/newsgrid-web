@@ -44,15 +44,31 @@ async function getMakoTicket(channel) {
         const dv = channel.params?.dv || "1e2258089b67f510VgnVCM2000002a0c10acRCRD";
 
         return new Promise((resolve) => {
-            chrome.runtime.sendMessage({ action: "get-mako-ticket", lp, dv }, (response) => {
-                if (response && response.success && response.url) {
-                    console.log("[Mako Ext] Got signed Mako URL from background:", response.url);
-                    resolve(response.url);
-                } else {
-                    console.warn("[Mako Ext] Background ticket fetch failed, fallback to url:", response?.error);
-                    resolve(channel.url);
-                }
-            });
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                chrome.runtime.sendMessage({ action: "get-mako-ticket", lp, dv }, (response) => {
+                    if (response && response.success && response.url) {
+                        console.log("[Mako Ext] Got signed Mako URL from background:", response.url);
+                        resolve(response.url);
+                    } else {
+                        console.warn("[Mako Ext] Background ticket fetch failed, fallback to url:", response?.error);
+                        resolve(channel.url);
+                    }
+                });
+            } else {
+                const deviceId = "web-" + Math.random().toString(36).substring(2, 12);
+                const reqUrl = `https://mass.mako.co.il/ClicksStatistics/entitlementsServicesV2.jsp?et=gt&lp=${encodeURIComponent(lp)}&dv=${dv}&rv=AKAMAI&du=${deviceId}`;
+                fetch(reqUrl)
+                    .then(res => res.json())
+                    .then(data => {
+                        const ticket = data.tickets?.[0]?.ticket;
+                        if (ticket) {
+                            resolve(`https://mako-streaming.akamaized.net${lp}?${ticket}`);
+                        } else {
+                            resolve(channel.url);
+                        }
+                    })
+                    .catch(() => resolve(channel.url));
+            }
         });
     } catch (e) {
         console.error("[Mako Ext] Mako ticket error:", e);
