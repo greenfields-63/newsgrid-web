@@ -129,7 +129,6 @@
         let selectedChannels = [];
         let hlsInstances = [null, null, null, null];
         let activeAudioIndex = 0;
-        const deviceId = "web-" + Math.random().toString(36).substring(2, 12);
 
         async function fetchGistChannels() {
             try {
@@ -152,31 +151,6 @@
                 ];
             }
             loadSavedSelection();
-        }
-
-        async function getMakoTicket(channel) {
-            try {
-                const lp = channel.params?.lp || "/direct/hls/live/2033791/k12/index.m3u8";
-                const dv = channel.params?.dv || "1e2258089b67f510VgnVCM2000002a0c10acRCRD";
-                const reqUrl = `https://mass.mako.co.il/ClicksStatistics/entitlementsServicesV2.jsp?et=gt&lp=${encodeURIComponent(lp)}&dv=${dv}&rv=AKAMAI&du=${deviceId}`;
-                console.log("[Mako Debug] Fetching ticket from:", reqUrl);
-                const res = await fetch(reqUrl);
-                if (res.ok) {
-                    const data = await res.json();
-                    console.log("[Mako Debug] Ticket response:", data);
-                    const ticket = data.tickets?.[0]?.ticket;
-                    if (ticket) {
-                        const finalUrl = `https://mako-streaming.akamaized.net${lp}?${ticket}`;
-                        console.log("[Mako Debug] Signed Mako URL:", finalUrl);
-                        return finalUrl;
-                    }
-                } else {
-                    console.warn("[Mako Debug] Ticket HTTP error:", res.status);
-                }
-            } catch (e) {
-                console.error("[Mako Debug] Mako ticket fetch error:", e);
-            }
-            return channel.url;
         }
 
         function loadSavedSelection() {
@@ -216,10 +190,6 @@
                 labelEl.textContent = channel.name;
 
                 let rawUrl = channel.url;
-                if (channel.type === "mako") {
-                    rawUrl = await getMakoTicket(channel);
-                }
-
                 let proxyUrl = localStorage.getItem("newsgrid_family_proxy") || "";
                 let streamUrl = proxyUrl ? `${proxyUrl}?url=${encodeURIComponent(rawUrl)}` : rawUrl;
 
