@@ -354,7 +354,7 @@
             if (checkedUrls.length === 0) return;
             localStorage.setItem("newsgrid_family_proxy", document.getElementById('proxy-url-input').value.trim());
             selectedChannels = availableChannels.filter(c => checkedUrls.includes(c.url)).slice(0, 4);
-            localStorage.setItem("newsgrid_family_selected", JSON.stringify(selectedChannels.map(c => c.1 === undefined ? "" : "" )).slice(0,4)); // cleaner without modal.classList.0
+            localStorage.setItem("newsgrid_family_selected", JSON.stringify(selectedChannels.map(c => c.url)));
             modal.classList.remove('open');
             initGrid();
         });
