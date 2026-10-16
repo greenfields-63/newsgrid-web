@@ -93,15 +93,15 @@
         </div>
         <div class="tile" data-index="1" id="tile-1">
             <video id="video-1" autoplay playsinline muted></video>
-            <div class="label"><span class="audio-indicator"></span><span id="label-1">Reshet 13</span></div>
+            <div class="label"><span class="audio-indicator"></span><span id="label-1">Channel 12</span></div>
         </div>
         <div class="tile" data-index="2" id="tile-2">
             <video id="video-2" autoplay playsinline muted></video>
-            <div class="label"><span class="audio-indicator"></span><span id="label-2">Channel 14</span></div>
+            <div class="label"><span class="audio-indicator"></span><span id="label-2">Reshet 13</span></div>
         </div>
         <div class="tile" data-index="3" id="tile-3">
             <video id="video-3" autoplay playsinline muted></video>
-            <div class="label"><span class="audio-indicator"></span><span id="label-3">CNN</span></div>
+            <div class="label"><span class="audio-indicator"></span><span id="label-3">Channel 14</span></div>
         </div>
     </div>
 
@@ -129,6 +129,7 @@
         let selectedChannels = [];
         let hlsInstances = [null, null, null, null];
         let activeAudioIndex = 0;
+        const deviceId = "web-" + Math.random().toString(36).substring(2, 12);
 
         async function fetchGistChannels() {
             try {
@@ -136,7 +137,7 @@
                 if (res.ok) {
                     const data = await res.json();
                     if (Array.isArray(data) && data.length > 0) {
-                        availableChannels = data.filter(c => c.enabled !== false && c.web_enabled !== false);
+                        availableChannels = data.filter(c => c.enabled !== false);
                     }
                 }
             } catch (e) {
@@ -145,12 +146,30 @@
             if (availableChannels.length === 0) {
                 availableChannels = [
                     { name: "Kan 11", url: "https://kancdn.medonecdn.net/livehls/oil/kancdn-live/live/kan11/live.livx/playlist.m3u8", referer: "https://www.kan.org.il/" },
+                    { name: "Channel 12", url: "https://mako-streaming.akamaized.net/direct/hls/live/2033791/k12/index.m3u8", referer: "https://www.mako.co.il/", type: "mako", params: { lp: "/direct/hls/live/2033791/k12/index.m3u8", dv: "1e2258089b67f510VgnVCM2000002a0c10acRCRD" } },
                     { name: "Reshet 13", url: "https://d18b0e6mopany4.cloudfront.net/out/v1/2f2bc414a3db4698a8e94b89eaf2da2a/index.m3u8", referer: "https://13tv.co.il/" },
-                    { name: "Channel 14", url: "https://n-121-6.il.cdn-redge.media/livehls/oil/ch14/live/ch14/live.livx/playlist.m3u8", referer: "https://www.now14.co.il/" },
-                    { name: "CNN", url: "https://d3bp6dwmpbdajl.cloudfront.net/v1/manifest/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-ury0meh5m4nzm/a917e10a-49de-426a-8a9b-a3d47f63d737/2.m3u8", referer: "https://www.cnn.com/" }
+                    { name: "Channel 14", url: "https://n-121-6.il.cdn-redge.media/livehls/oil/ch14/live/ch14/live.livx/playlist.m3u8", referer: "https://www.now14.co.il/" }
                 ];
             }
             loadSavedSelection();
+        }
+
+        async function getMakoTicket(channel) {
+            try {
+                const lp = channel.params?.lp || "/direct/hls/live/2033791/k12/index.m3u8";
+                const dv = channel.params?.dv || "1e2258089b67f510VgnVCM2000002a0c10acRCRD";
+                const res = await fetch(`https://mass.mako.co.il/ClicksStatistics/entitlementsServicesV2.jsp?et=gt&lp=${encodeURIComponent(lp)}&dv=${dv}&rv=AKAMAI&du=${deviceId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const ticket = data.tickets?.[0]?.ticket;
+                    if (ticket) {
+                        return `https://mako-streaming.akamaized.net${lp}?${ticket}`;
+                    }
+                }
+            } catch (e) {
+                console.warn("Mako ticket fetch failed", e);
+            }
+            return channel.url;
         }
 
         function loadSavedSelection() {
@@ -163,10 +182,10 @@
             }
             if (selectedChannels.length < 4) {
                 selectedChannels = availableChannels.filter(c =>
-                    !c.name.includes("12") && (c.name.includes("11") || c.name.includes("13") || c.name.includes("14") || c.name.includes("CNN"))
+                    c.name.includes("11") || c.name.includes("12") || c.name.includes("13") || c.name.includes("14")
                 ).slice(0, 4);
                 if (selectedChannels.length === 0) {
-                    selectedChannels = availableChannels.filter(c => !c.name.includes("12")).slice(0, 4);
+                    selectedChannels = availableChannels.slice(0, 4);
                 }
             }
             initGrid();
@@ -190,6 +209,10 @@
                 labelEl.textContent = channel.name;
 
                 let rawUrl = channel.url;
+                if (channel.type === "mako") {
+                    rawUrl = await getMakoTicket(channel);
+                }
+
                 let proxyUrl = localStorage.getItem("newsgrid_family_proxy") || "";
                 let streamUrl = proxyUrl ? `${proxyUrl}?url=${encodeURIComponent(rawUrl)}` : rawUrl;
 
