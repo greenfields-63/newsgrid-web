@@ -209,15 +209,8 @@
                 labelEl.textContent = channel.name;
 
                 let rawUrl = channel.url;
-                let makoToken = null;
                 if (channel.type === "mako") {
-                    const makoFullUrl = await getMakoTicket(channel);
-                    if (makoFullUrl && makoFullUrl.includes("?")) {
-                        rawUrl = makoFullUrl.substring(0, makoFullUrl.indexOf("?"));
-                        makoToken = makoFullUrl.substring(makoFullUrl.indexOf("?") + 1);
-                    } else {
-                        rawUrl = makoFullUrl;
-                    }
+                    rawUrl = await getMakoTicket(channel);
                 }
 
                 let proxyUrl = localStorage.getItem("newsgrid_family_proxy") || "";
@@ -235,16 +228,6 @@
                         startLevel: -1,
                         autoStartLoad: true
                     };
-
-                    if (makoToken) {
-                        hlsConfig.xhrSetup = (xhr, url) => {
-                            if (url.includes("mako-streaming.akamaized.net") && !url.includes("hdnea")) {
-                                const sep = url.includes("?") ? "&" : "?";
-                                url = url + sep + makoToken;
-                            }
-                            xhr.open("GET", url, true);
-                        };
-                    }
 
                     const hls = new Hls(hlsConfig);
                     hls.loadSource(streamUrl);
@@ -362,6 +345,7 @@
             selectedChannels = availableChannels.filter(c => checkedUrls.includes(c.url)).slice(0, 4);
             localStorage.setItem("newsgrid_family_selected", JSON.stringify(selectedChannels.map(c => c.url)));
             modal.classList.remove('open');
+            initGrid();
         });
 
         fetchGistChannels();
