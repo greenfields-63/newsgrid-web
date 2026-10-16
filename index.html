@@ -197,17 +197,17 @@
                     const hlsConfig = {
                         enableWorker: true,
                         lowLatencyMode: false,
-                        liveSyncDurationCount: 1,
-                        liveMaxLatencyDurationCount: 6,
-                        maxLiveSyncPlaybackRate: 1.5,
-                        maxBufferLength: 15,
-                        maxMaxBufferLength: 30,
+                        liveSyncDurationCount: 3,
+                        liveMaxLatencyDurationCount: 10,
+                        maxLiveSyncPlaybackRate: 1.1,
+                        maxBufferLength: 30,
+                        maxMaxBufferLength: 60,
                         startLevel: -1,
                         autoStartLoad: true,
-                        highBufferWatchdogPeriod: 1,
-                        manifestLoadingTimeOut: 10000,
-                        manifestLoadingMaxRetry: 4,
-                        levelLoadingTimeOut: 10000
+                        fragLoadingTimeOut: 20000,
+                        fragLoadingMaxRetry: 6,
+                        manifestLoadingTimeOut: 15000,
+                        manifestLoadingMaxRetry: 6
                     };
 
                     const hls = new Hls(hlsConfig);
@@ -238,8 +238,9 @@
                                     hls.destroy();
                                     break;
                             }
-                        } else if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
-                            hls.startLoad();
+                        } else if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR || data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR) {
+                            console.warn("Buffer stalled or fragment load error, jumping to live edge...", data);
+                            hls.startLoad(-1);
                         }
                     });
                     hlsInstances[i] = hls;
