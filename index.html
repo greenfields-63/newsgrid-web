@@ -209,8 +209,15 @@
                 labelEl.textContent = channel.name;
 
                 let rawUrl = channel.url;
+                let makoToken = null;
                 if (channel.type === "mako") {
-                    rawUrl = await getMakoTicket(channel);
+                    const makoFullUrl = await getMakoTicket(channel);
+                    if (makoFullUrl && makoFullUrl.includes("?")) {
+                        rawUrl = makoFullUrl.substring(0, makoFullUrl.indexOf("?"));
+                        makoToken = makoFullUrl.substring(makoFullUrl.indexOf("?") + 1);
+                    } else {
+                        rawUrl = makoFullUrl;
+                    }
                 }
 
                 let proxyUrl = localStorage.getItem("newsgrid_family_proxy") || "";
@@ -226,12 +233,18 @@
                         maxBufferLength: 30,
                         maxMaxBufferLength: 60,
                         startLevel: -1,
-                        autoStartLoad: true,
-                        fragLoadingTimeOut: 20000,
-                        fragLoadingMaxRetry: 6,
-                        manifestLoadingTimeOut: 15000,
-                        manifestLoadingMaxRetry: 6
+                        autoStartLoad: true
                     };
+
+                    if (makoToken) {
+                        hlsConfig.xhrSetup = (xhr, url) => {
+                            if (url.includes("mako-streaming.akamaized.net") && !url.includes("hdnea")) {
+                                const sep = url.includes("?") ? "&" : "?";
+                                url = url + sep + makoToken;
+                            }
+                            xhr.open("GET", url, true);
+                        };
+                    }
 
                     const hls = new Hls(hlsConfig);
                     hls.loadSource(streamUrl);
@@ -349,7 +362,6 @@
             selectedChannels = availableChannels.filter(c => checkedUrls.includes(c.url)).slice(0, 4);
             localStorage.setItem("newsgrid_family_selected", JSON.stringify(selectedChannels.map(c => c.url)));
             modal.classList.remove('open');
-            initGrid();
         });
 
         fetchGistChannels();
