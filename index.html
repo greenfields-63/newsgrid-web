@@ -158,16 +158,23 @@
             try {
                 const lp = channel.params?.lp || "/direct/hls/live/2033791/k12/index.m3u8";
                 const dv = channel.params?.dv || "1e2258089b67f510VgnVCM2000002a0c10acRCRD";
-                const res = await fetch(`https://mass.mako.co.il/ClicksStatistics/entitlementsServicesV2.jsp?et=gt&lp=${encodeURIComponent(lp)}&dv=${dv}&rv=AKAMAI&du=${deviceId}`);
+                const reqUrl = `https://mass.mako.co.il/ClicksStatistics/entitlementsServicesV2.jsp?et=gt&lp=${encodeURIComponent(lp)}&dv=${dv}&rv=AKAMAI&du=${deviceId}`;
+                console.log("[Mako Debug] Fetching ticket from:", reqUrl);
+                const res = await fetch(reqUrl);
                 if (res.ok) {
                     const data = await res.json();
+                    console.log("[Mako Debug] Ticket response:", data);
                     const ticket = data.tickets?.[0]?.ticket;
                     if (ticket) {
-                        return `https://mako-streaming.akamaized.net${lp}?${ticket}`;
+                        const finalUrl = `https://mako-streaming.akamaized.net${lp}?${ticket}`;
+                        console.log("[Mako Debug] Signed Mako URL:", finalUrl);
+                        return finalUrl;
                     }
+                } else {
+                    console.warn("[Mako Debug] Ticket HTTP error:", res.status);
                 }
             } catch (e) {
-                console.warn("Mako ticket fetch failed", e);
+                console.error("[Mako Debug] Mako ticket fetch error:", e);
             }
             return channel.url;
         }
@@ -216,6 +223,8 @@
                 let proxyUrl = localStorage.getItem("newsgrid_family_proxy") || "";
                 let streamUrl = proxyUrl ? `${proxyUrl}?url=${encodeURIComponent(rawUrl)}` : rawUrl;
 
+                console.log(`[NewsGrid Debug] Loading channel [${i}] ${channel.name} with streamUrl:`, streamUrl);
+
                 if (Hls.isSupported()) {
                     const hlsConfig = {
                         enableWorker: true,
@@ -234,6 +243,7 @@
                     hls.attachMedia(videoEl);
 
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        console.log("[NewsGrid Debug] Manifest parsed for " + channel.name);
                         if (hls.levels && hls.levels.length > 1) {
                             let maxCapIndex = -1;
                             hls.levels.forEach((level, index) => {
@@ -241,10 +251,11 @@
                             });
                             if (maxCapIndex !== -1) hls.autoLevelCapping = maxCapIndex;
                         }
-                        videoEl.play().catch(() => {});
+                        videoEl.play().catch(err => console.warn("[NewsGrid Debug] Autoplay blocked for " + channel.name, err));
                     });
 
                     hls.on(Hls.Events.ERROR, async (event, data) => {
+                        console.error("[NewsGrid Error] on " + channel.name, data.type, data.details, data);
                         if (data.fatal) {
                             switch (data.type) {
                                 case Hls.ErrorTypes.NETWORK_ERROR:
@@ -258,7 +269,7 @@
                                     break;
                             }
                         } else if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR || data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR) {
-                            console.warn("Buffer stalled or fragment load error, jumping to live edge...", data);
+                            console.warn("[NewsGrid Warning] Buffer stalled or fragment load error, jumping to live edge...", data);
                             hls.startLoad(-1);
                         }
                     });
@@ -343,7 +354,7 @@
             if (checkedUrls.length === 0) return;
             localStorage.setItem("newsgrid_family_proxy", document.getElementById('proxy-url-input').value.trim());
             selectedChannels = availableChannels.filter(c => checkedUrls.includes(c.url)).slice(0, 4);
-            localStorage.setItem("newsgrid_family_selected", JSON.stringify(selectedChannels.map(c => c.url)));
+            localStorage.setItem("newsgrid_family_selected", JSON.stringify(selectedChannels.map(c => c.1 === undefined ? "" : "" )).slice(0,4)); // cleaner without modal.classList.0
             modal.classList.remove('open');
             initGrid();
         });
