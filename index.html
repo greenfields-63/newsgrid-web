@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewsGrid Family Web</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0d0d0d;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: #161618;
+            border-bottom: 1px solid #2a2a2d;
+            height: 48px;
+        }
+        h1 { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .settings-btn {
+            background: #28282c; color: #fff; border: 1px solid #3f3f46;
+            padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer;
+        }
+        .settings-btn:hover { background: #3f3f46; }
+        .grid-container {
+            height: calc(100vh - 48px);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 8px; padding: 8px; background: #000; position: relative;
+        }
+        .tile {
+            position: relative; background: #121214; border-radius: 8px;
+            overflow: hidden; border: 2px solid transparent; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .tile.active { border-color: #3b82f6; box-shadow: 0 0 12px rgba(59, 130, 246, 0.4); }
+        .tile.fullscreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 50; border-radius: 0; border: none;
+        }
+        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+        .label {
+            position: absolute; top: 12px; left: 12px; background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px); padding: 4px 10px; border-radius: 4px;
+            font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; z-index: 10;
+        }
+        .audio-indicator { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
+        .tile.active .audio-indicator { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(6px); z-index: 100;
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #1e1e22; border: 1px solid #333338; border-radius: 12px;
+            width: 440px; max-width: 90vw; padding: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+        .modal-header { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .channel-list { max-height: 280px; overflow-y: auto; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px; }
+        .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #27272a; border-radius: 6px; cursor: pointer; }
+        .channel-item:hover { background: #3f3f46; }
+        .channel-item input { width: 18px; height: 18px; accent-color: #3b82f6; cursor: pointer; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+        .btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; }
+        .btn-primary { background: #3b82f6; color: #fff; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-secondary { background: #3f3f46; color: #ccc; }
+        .btn-secondary:hover { background: #52525b; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📺 NewsGrid Family</h1>
+        <button class="settings-btn" id="open-settings">⚙️ Settings</button>
+    </header>
+
+    <div class="grid-container" id="grid">
+        <div class="tile active" data-index="0" id="tile-0">
+            <video id="video-0" autoplay playsinline muted></video>
+            <div class="label"><span class="audio-indicator"></span><span id="label-0">Kan 11</span></div>
+        </div>
+        <div class="tile" data-index="1" id="tile-1">
+            <video id="video-1" autoplay playsinline muted></video>
+            <div class="label"><span class="audio-indicator"></span><span id="label-1">Reshet 13</span></div>
+        </div>
+        <div class="tile" data-index="2" id="tile-2">
+            <video id="video-2" autoplay playsinline muted></video>
+            <div class="label"><span class="audio-indicator"></span><span id="label-2">Channel 14</span></div>
+        </div>
+        <div class="tile" data-index="3" id="tile-3">
+            <video id="video-3" autoplay playsinline muted></video>
+            <div class="label"><span class="audio-indicator"></span><span id="label-3">CNN</span></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span>NewsGrid Settings</span>
+                <span style="font-size: 12px; color: #aaa;" id="count-label">(4 selected)</span>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Cloudflare Worker Proxy URL:</label>
+                <input type="text" id="proxy-url-input" aria-label="Cloudflare Worker Proxy URL" placeholder="https://newsgrid-proxy.your-subdomain.workers.dev" style="width: 100%; padding: 8px; background: #27272a; border: 1px solid #3f3f46; border-radius: 6px; color: #fff; font-size: 13px;">
+            </div>
+            <div class="channel-list" id="channel-list"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="close-modal">Cancel</button>
+                <button class="btn btn-primary" id="save-channels">Save & Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const gistUrl = "https://gist.githubusercontent.com/greenfields-63/47648eee6d12acaa2ae5146a10d02b33/raw/channels.json";
+        let availableChannels = [];
+        let selectedChannels = [];
+        let hlsInstances = [null, null, null, null];
+        let activeAudioIndex = 0;
+
+        async function fetchGistChannels() {
+            try {
+                const res = await fetch(gistUrl);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        availableChannels = data.filter(c => c.enabled !== false && c.web_enabled !== false);
+                    }
+                }
+            } catch (e) {
+                console.warn("Failed to fetch Gist channels", e);
+            }
+            if (availableChannels.length === 0) {
+                availableChannels = [
+                    { name: "Kan 11", url: "https://kancdn.medonecdn.net/livehls/oil/kancdn-live/live/kan11/live.livx/playlist.m3u8", referer: "https://www.kan.org.il/" },
+                    { name: "Reshet 13", url: "https://d18b0e6mopany4.cloudfront.net/out/v1/2f2bc414a3db4698a8e94b89eaf2da2a/index.m3u8", referer: "https://13tv.co.il/" },
+                    { name: "Channel 14", url: "https://n-121-6.il.cdn-redge.media/livehls/oil/ch14/live/ch14/live.livx/playlist.m3u8", referer: "https://www.now14.co.il/" },
+                    { name: "CNN", url: "https://d3bp6dwmpbdajl.cloudfront.net/v1/manifest/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-ury0meh5m4nzm/a917e10a-49de-426a-8a9b-a3d47f63d737/2.m3u8", referer: "https://www.cnn.com/" }
+                ];
+            }
+            loadSavedSelection();
+        }
+
+        function loadSavedSelection() {
+            const saved = localStorage.getItem("newsgrid_family_selected");
+            if (saved) {
+                try {
+                    const urls = JSON.parse(saved);
+                    selectedChannels = availableChannels.filter(c => urls.includes(c.url)).slice(0, 4);
+                } catch (e) {}
+            }
+            if (selectedChannels.length < 4) {
+                selectedChannels = availableChannels.slice(0, 4);
+            }
+            initGrid();
+        }
+
+        async function initGrid() {
+            for (let i = 0; i < 4; i++) {
+                if (hlsInstances[i]) {
+                    hlsInstances[i].destroy();
+                    hlsInstances[i] = null;
+                }
+                const channel = selectedChannels[i];
+                const videoEl = document.getElementById(`video-${i}`);
+                const labelEl = document.getElementById(`label-${i}`);
+
+                if (!channel) {
+                    labelEl.textContent = "Empty";
+                    continue;
+                }
+
+                labelEl.textContent = channel.name;
+
+                let rawUrl = channel.url;
+                let proxyUrl = localStorage.getItem("newsgrid_family_proxy") || "";
+                let streamUrl = proxyUrl ? `${proxyUrl}?url=${encodeURIComponent(rawUrl)}` : rawUrl;
+
+                if (Hls.isSupported()) {
+                    const hlsConfig = {
+                        enableWorker: true,
+                        lowLatencyMode: false,
+                        startLevel: -1,
+                        autoStartLoad: true,
+                        maxBufferLength: 15,
+                        maxMaxBufferLength: 30,
+                        manifestLoadingTimeOut: 10000,
+                        manifestLoadingMaxRetry: 4,
+                        levelLoadingTimeOut: 10000
+                    };
+
+                    const hls = new Hls(hlsConfig);
+                    hls.loadSource(streamUrl);
+                    hls.attachMedia(videoEl);
+
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        if (hls.levels && hls.levels.length > 1) {
+                            let maxCapIndex = -1;
+                            hls.levels.forEach((level, index) => {
+                                if (level.height && level.height <= 720) maxCapIndex = index;
+                            });
+                            if (maxCapIndex !== -1) hls.autoLevelCapping = maxCapIndex;
+                        }
+                        videoEl.play().catch(() => {});
+                    });
+
+                    hls.on(Hls.Events.ERROR, async (event, data) => {
+                        if (data.fatal) {
+                            switch (data.type) {
+                                case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
+                                case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
+                                default: hls.destroy(); break;
+                            }
+                        } else if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
+                            hls.startLoad();
+                        }
+                    });
+                    hlsInstances[i] = hls;
+                } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+                    videoEl.src = streamUrl;
+                    videoEl.play().catch(() => {});
+                }
+            }
+            setAudioFocus(activeAudioIndex);
+        }
+
+        function setAudioFocus(index) {
+            activeAudioIndex = index;
+            document.querySelectorAll('.tile').forEach((tile, i) => {
+                const videoEl = document.getElementById(`video-${i}`);
+                if (i === index) {
+                    tile.classList.add('active');
+                    if (videoEl) { videoEl.muted = false; videoEl.volume = 1.0; }
+                } else {
+                    tile.classList.remove('active');
+                    if (videoEl) videoEl.muted = true;
+                }
+            });
+        }
+
+        document.querySelectorAll('.tile').forEach(tile => {
+            const index = parseInt(tile.dataset.index);
+            let clickTimer = null;
+            tile.addEventListener('click', () => {
+                if (clickTimer === null) {
+                    clickTimer = setTimeout(() => {
+                        clickTimer = null;
+                        if (tile.classList.contains('fullscreen')) tile.classList.remove('fullscreen');
+                        else setAudioFocus(index);
+                    }, 250);
+                }
+            });
+            tile.addEventListener('dblclick', () => {
+                if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+                setAudioFocus(index);
+                document.querySelectorAll('.tile').forEach(t => t.classList.remove('fullscreen'));
+                tile.classList.toggle('fullscreen');
+            });
+        });
+
+        const modal = document.getElementById('modal');
+        const channelList = document.getElementById('channel-list');
+        const countLabel = document.getElementById('count-label');
+
+        document.getElementById('open-settings').addEventListener('click', () => {
+            document.getElementById('proxy-url-input').value = localStorage.getItem("newsgrid_family_proxy") || "";
+            renderModalList();
+            modal.classList.add('open');
+        });
+
+        document.getElementById('close-modal').addEventListener('click', () => { modal.classList.remove('open'); });
+
+        function renderModalList() {
+            channelList.innerHTML = '';
+            const selectedUrls = selectedChannels.map(c => c.url);
+            availableChannels.forEach(channel => {
+                const item = document.createElement('label');
+                item.className = 'channel-item';
+                const isChecked = selectedUrls.includes(channel.url);
+                item.innerHTML = `<span>${channel.name}</span><input type="checkbox" value="${channel.url}" ${isChecked ? 'checked' : ''}>`;
+                const checkbox = item.querySelector('input');
+                checkbox.addEventListener('change', () => {
+                    if (channelList.querySelectorAll('input:checked').length > 4) {
+                        checkbox.checked = false;
+                        alert("Select up to 4 channels only.");
+                    }
+                    countLabel.textContent = `(${channelList.querySelectorAll('input:checked').length}/4 selected)`;
+                });
+                channelList.appendChild(item);
+            });
+            countLabel.textContent = `(${channelList.querySelectorAll('input:checked').length}/4 selected)`;
+        }
+
+        document.getElementById('save-channels').addEventListener('click', () => {
+            const checkedUrls = Array.from(channelList.querySelectorAll('input:checked')).map(cb => cb.value);
+            if (checkedUrls.length === 0) return;
+            localStorage.setItem("newsgrid_family_proxy", document.getElementById('proxy-url-input').value.trim());
+            selectedChannels = availableChannels.filter(c => checkedUrls.includes(c.url)).slice(0, 4);
+            localStorage.setItem("newsgrid_family_selected", JSON.stringify(selectedChannels.map(c => c.url)));
+            modal.classList.remove('open');
+            initGrid();
+        });
+
+        fetchGistChannels();
+    </script>
+</body>
+</html>
