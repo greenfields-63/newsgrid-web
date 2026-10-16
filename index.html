@@ -162,7 +162,6 @@
                 } catch (e) {}
             }
             if (selectedChannels.length < 4) {
-                // Default to working channels (exclude Channel 12 which requires dynamic handshake)
                 selectedChannels = availableChannels.filter(c =>
                     !c.name.includes("12") && (c.name.includes("11") || c.name.includes("13") || c.name.includes("14") || c.name.includes("CNN"))
                 ).slice(0, 4);
@@ -198,13 +197,14 @@
                     const hlsConfig = {
                         enableWorker: true,
                         lowLatencyMode: false,
-                        liveSyncDurationCount: 3,
-                        liveMaxLatencyDurationCount: 10,
-                        maxLiveSyncPlaybackRate: 1.2,
-                        maxBufferLength: 30,
-                        maxMaxBufferLength: 60,
+                        liveSyncDurationCount: 1,
+                        liveMaxLatencyDurationCount: 6,
+                        maxLiveSyncPlaybackRate: 1.5,
+                        maxBufferLength: 15,
+                        maxMaxBufferLength: 30,
                         startLevel: -1,
                         autoStartLoad: true,
+                        highBufferWatchdogPeriod: 1,
                         manifestLoadingTimeOut: 10000,
                         manifestLoadingMaxRetry: 4,
                         levelLoadingTimeOut: 10000
