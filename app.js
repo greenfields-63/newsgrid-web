@@ -205,7 +205,6 @@ document.querySelectorAll('.tile').forEach(tile => {
         }
     });
 });
-});
 
 const modal = document.getElementById('modal');
 const channelList = document.getElementById('channel-list');
