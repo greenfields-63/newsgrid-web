@@ -128,12 +128,12 @@ async function initGrid() {
             const hlsConfig = {
                 enableWorker: true,
                 lowLatencyMode: false,
-                liveSyncDurationCount: 3,
-                liveMaxLatencyDurationCount: 10,
+                liveSyncDurationCount: 2,
+                liveMaxLatencyDurationCount: 8,
                 maxLiveSyncPlaybackRate: 1.1,
                 maxBufferLength: 30,
                 maxMaxBufferLength: 60,
-                startLevel: 0,
+                initialLiveManifestSize: 1,
                 autoStartLoad: true,
                 xhrSetup: (xhr, url) => {
                     if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
