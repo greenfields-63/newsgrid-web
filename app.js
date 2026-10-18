@@ -194,25 +194,17 @@ function setAudioFocus(index) {
 
 document.querySelectorAll('.tile').forEach(tile => {
     const index = parseInt(tile.dataset.index);
-    let clickTimer = null;
     tile.addEventListener('click', () => {
-        if (clickTimer === null) {
-            clickTimer = setTimeout(() => {
-                clickTimer = null;
-                if (tile.classList.contains('fullscreen')) tile.classList.remove('fullscreen');
-                else setAudioFocus(index);
-            }, 250);
-        }
-    });
-    tile.addEventListener('dblclick', () => {
-        if (clickTimer) {
-            clearTimeout(clickTimer);
-            clickTimer = null;
-            setAudioFocus(index);
+        if (tile.classList.contains('fullscreen')) {
+            tile.classList.remove('fullscreen');
+        } else if (lastSelectedAudioIndex === index) {
             document.querySelectorAll('.tile').forEach(t => t.classList.remove('fullscreen'));
             tile.classList.toggle('fullscreen');
+        } else {
+            setAudioFocus(index);
         }
     });
+});
 });
 
 const modal = document.getElementById('modal');
