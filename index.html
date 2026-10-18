@@ -38,6 +38,14 @@
             grid-template-rows: 1fr 1fr;
             gap: 8px; padding: 8px; background: #000; position: relative;
         }
+        @media (max-width: 768px), (orientation: portrait) {
+            body { height: auto; overflow: auto; }
+            .grid-container {
+                height: auto;
+                grid-template-columns: 1fr;
+                grid-template-rows: repeat(4, 250px);
+            }
+        }
         .tile {
             position: relative; background: #121214; border-radius: 8px;
             overflow: hidden; border: 2px solid transparent; cursor: pointer;
