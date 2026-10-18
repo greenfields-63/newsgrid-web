@@ -7,20 +7,15 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         @media (orientation: portrait) {
-            html {
+            html, body {
                 width: 100dvh;
                 height: 100dvw;
                 overflow: hidden;
-            }
-            body {
-                width: 100dvh;
-                height: 100dvw;
+                position: fixed;
+                top: 0;
+                left: 0;
                 transform: rotate(90deg);
                 transform-origin: top left;
-                position: absolute;
-                top: 0;
-                left: 100%;
-                overflow: hidden;
             }
         }
         body {
