@@ -197,7 +197,7 @@ document.querySelectorAll('.tile').forEach(tile => {
     tile.addEventListener('click', () => {
         if (tile.classList.contains('fullscreen')) {
             tile.classList.remove('fullscreen');
-        } else if (lastSelectedAudioIndex === index) {
+        } else if (activeAudioIndex === index) {
             document.querySelectorAll('.tile').forEach(t => t.classList.remove('fullscreen'));
             tile.classList.toggle('fullscreen');
         } else {
