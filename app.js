@@ -147,10 +147,15 @@ async function initGrid() {
                     xhr.open('GET', url, true);
                 }
             };
+            videoEl.muted = true;
             const hls = new Hls(hlsConfig);
             hls.loadSource(streamUrl);
             hls.attachMedia(videoEl);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => videoEl.play().catch(() => {}));
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                videoEl.play().then(() => {
+                    setAudioFocus(activeAudioIndex);
+                }).catch(() => {});
+            });
 
             hls.on(Hls.Events.ERROR, async (event, data) => {
                 if (data.fatal) {
@@ -163,8 +168,11 @@ async function initGrid() {
             });
             hlsInstances[i] = hls;
         } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+            videoEl.muted = true;
             videoEl.src = streamUrl;
-            videoEl.play().catch(() => {});
+            videoEl.play().then(() => {
+                setAudioFocus(activeAudioIndex);
+            }).catch(() => {});
         }
     }
     setAudioFocus(activeAudioIndex);
