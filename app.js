@@ -153,6 +153,9 @@ async function initGrid() {
             const hls = new Hls(hlsConfig);
             hls.loadSource(streamUrl);
             hls.attachMedia(videoEl);
+            if (channel.name.includes("Kan 11")) {
+                hls.startLoad();
+            }
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 videoEl.play().then(() => {
                     setAudioFocus(activeAudioIndex);
