@@ -168,9 +168,14 @@ async function initGrid() {
                     }
                     hls.currentLevel = lowestLevel;
                     console.log("[Kan 11 Debug] Locked to lowest level index:", lowestLevel, "bitrate:", minBw);
+                    videoEl.muted = true;
                     videoEl.play().then(() => {
                         setAudioFocus(activeAudioIndex);
-                    }).catch(err => console.error("[Kan 11 Debug] play error:", err));
+                    }).catch(err => {
+                        console.error("[Kan 11 Debug] play error:", err);
+                        videoEl.muted = true;
+                        videoEl.play().catch(() => {});
+                    });
                 });
                 hls.on(Hls.Events.FRAG_LOADING, (event, data) => {
                     console.log("[Kan 11 Debug] FRAG_LOADING:", data.frag.sn, data.frag.url);
