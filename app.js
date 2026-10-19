@@ -186,23 +186,25 @@ async function loadTileStream(index, channel) {
         const isCnn = channel.url.includes("cloudfront.net");
         const hlsConfig = {
             enableWorker: true,
-            lowLatencyMode: isCnn,
-            liveSyncDurationCount: isCnn ? 1 : 3,
-            liveMaxLatencyDurationCount: isCnn ? 3 : 10,
-            maxLiveSyncPlaybackRate: 1.1,
+            lowLatencyMode: false, // Standard HLS (6s segments) - avoids buffer starvation
+            liveSyncDurationCount: isCnn ? 3 : 3, // Safe 3-segment buffer (18s) to prevent freezing
+            liveMaxLatencyDurationCount: isCnn ? 8 : 10,
+            maxLiveSyncPlaybackRate: 1.0, // Normal playback rate avoids draining the buffer
             maxBufferLength: 30,
             maxMaxBufferLength: 60,
-            initialLiveManifestSize: 1,
+            initialLiveManifestSize: 2,
             autoStartLoad: true,
             xhrSetup: (xhr, url) => {
                 if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
                     xhr.withCredentials = true;
                     if (makoToken && !url.includes("hdnea")) {
                         const sep = url.includes("?") ? "&" : "?";
-                        url = url + sep + makoToken;
+                        const targetUrl = url + sep + makoToken;
+                        xhr.open("GET", targetUrl, true);
+                        xhr.responseType = "arraybuffer";
                     }
                 }
-                xhr.open("GET", url, true);
+                // Never re-open XHR for non-Mako streams like CNN
             }
         };
 
