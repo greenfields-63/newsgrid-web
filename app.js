@@ -126,11 +126,12 @@ async function initGrid() {
 
         if (Hls.isSupported()) {
             const isCnn = channel.url.includes("cloudfront.net");
+            const isKan = channel.name.includes("Kan 11");
             const hlsConfig = {
                 enableWorker: true,
                 lowLatencyMode: isCnn,
-                liveSyncDurationCount: isCnn ? 1 : 2,
-                liveMaxLatencyDurationCount: isCnn ? 3 : 8,
+                liveSyncDurationCount: isCnn ? 1 : (isKan ? 4 : 2),
+                liveMaxLatencyDurationCount: isCnn ? 3 : (isKan ? 15 : 8),
                 maxLiveSyncPlaybackRate: 1.1,
                 maxBufferLength: 30,
                 maxMaxBufferLength: 60,
