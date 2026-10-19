@@ -169,16 +169,18 @@ async function initGrid() {
             });
             hlsInstances[i] = hls;
 
-            // Auto-refresh Kan 11 on startup to ensure it never boots up frozen
+            // Unconditional immediate refresh for Kan 11 on startup
             if (channel.name.includes("Kan 11")) {
-                setTimeout(() => {
-                    if (videoEl && videoEl.paused && hls) {
-                        hls.stopLoad();
-                        hls.loadSource(streamUrl);
-                        hls.startLoad();
-                        videoEl.play().catch(() => {});
-                    }
-                }, 1200);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    setTimeout(() => {
+                        if (hls && videoEl) {
+                            hls.stopLoad();
+                            hls.loadSource(streamUrl);
+                            hls.startLoad();
+                            videoEl.play().catch(() => {});
+                        }
+                    }, 500);
+                });
             }
 
             // Auto-recovery watchdog: if stream stalls on startup, kickstart it automatically after 2 seconds
