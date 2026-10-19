@@ -101,11 +101,29 @@ async function getMakoTicket(channel) {
 // ----------------------------------------------------
 
 function loadSavedChannels() {
+    const savedNames = localStorage.getItem("newsgrid_selected_names");
     const saved = localStorage.getItem("newsgrid_ext_selected") || localStorage.getItem("newsgrid_web_selected");
-    if (saved) {
+
+    selectedChannels = [];
+
+    // Prioritize matching by channel name so URL edits in the Gist take effect immediately
+    if (savedNames) {
+        try {
+            const names = JSON.parse(savedNames);
+            for (const name of names) {
+                const found = availableChannels.find(c => c.name === name);
+                if (found && !selectedChannels.includes(found)) selectedChannels.push(found);
+            }
+        } catch (e) {}
+    }
+
+    if (selectedChannels.length < 4 && saved) {
         try {
             const urls = JSON.parse(saved);
-            selectedChannels = availableChannels.filter(c => urls.includes(c.url)).slice(0, 4);
+            for (const item of urls) {
+                const found = availableChannels.find(c => c.url === item || c.name === item);
+                if (found && !selectedChannels.includes(found)) selectedChannels.push(found);
+            }
         } catch (e) {}
     }
 
@@ -577,6 +595,7 @@ document.getElementById("save-channels")?.addEventListener("click", () => {
 
     localStorage.setItem("newsgrid_ext_selected", JSON.stringify(checkedUrls));
     localStorage.setItem("newsgrid_web_selected", JSON.stringify(checkedUrls));
+    localStorage.setItem("newsgrid_selected_names", JSON.stringify(selectedChannels.map(c => c.name)));
     modal.classList.remove("open");
     initGrid();
 });
