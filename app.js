@@ -173,15 +173,22 @@ async function initGrid() {
             });
             hlsInstances[i] = hls;
 
-            // Unconditional immediate kickstart for Kan 11 on startup
+            // Unconditional decoder unfreeze for Kan 11 on startup
             if (channel.name.includes("Kan 11")) {
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     setTimeout(() => {
                         if (hls && videoEl) {
                             hls.startLoad();
+                            videoEl.pause();
                             videoEl.play().catch(() => {});
+                            if (videoEl.buffered.length > 0) {
+                                const endBuf = videoEl.buffered.end(videoEl.buffered.length - 1);
+                                if (endBuf > videoEl.currentTime + 1) {
+                                    videoEl.currentTime = endBuf - 0.5;
+                                }
+                            }
                         }
-                    }, 400);
+                    }, 1500);
                 });
             }
 
