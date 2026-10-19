@@ -166,6 +166,9 @@ async function initGrid() {
                         case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
                         default: hls.destroy(); break;
                     }
+                } else if (data.details === 'bufferStalledError') {
+                    hls.startLoad();
+                    videoEl.play().catch(() => {});
                 }
             });
             hlsInstances[i] = hls;
@@ -272,3 +275,14 @@ document.getElementById('save-channels').addEventListener('click', () => {
 });
 
 fetchGistChannels();
+
+// Universal playback stall & freeze recovery watchdog
+setInterval(() => {
+    for (let i = 0; i < 4; i++) {
+        const v = document.getElementById(`video-${i}`);
+        const h = hlsInstances[i];
+        if (v && h && !v.paused && v.readyState < 3) {
+            h.startLoad();
+        }
+    }
+}, 4000);
