@@ -25,11 +25,11 @@ const DEFAULT_CHANNELS = [
     },
     {
         name: "Channel 12",
-        url: "https://mako-streaming.akamaized.net/direct/hls/live/2033791/k12/index.m3u8",
+        url: "https://mako-streaming.akamaized.net/stream/hls/live/2033791/k12n12wad/index.m3u8",
         referer: "https://www.mako.co.il/",
         type: "mako",
         params: {
-            lp: "/direct/hls/live/2033791/k12/index.m3u8",
+            lp: "/stream/hls/live/2033791/k12n12wad/index.m3u8",
             dv: "1e2258089b67f510VgnVCM2000002a0c10acRCRD"
         }
     },
@@ -51,12 +51,18 @@ const DEFAULT_CHANNELS = [
 
 async function fetchChannels() {
     try {
-        // Append cache-buster so updates to the Gist are reflected immediately without waiting for CDN cache
         const res = await fetch(`${GIST_URL}?_=${Date.now()}`);
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
-                availableChannels = data.filter(c => c.enabled !== false);
+                availableChannels = data.filter(c => c.enabled !== false).map(c => {
+                    if (c.type === "mako") {
+                        c.url = "https://mako-streaming.akamaized.net/stream/hls/live/2033791/k12n12wad/index.m3u8";
+                        c.params = c.params || {};
+                        c.params.lp = "/stream/hls/live/2033791/k12n12wad/index.m3u8";
+                    }
+                    return c;
+                });
             }
         }
     } catch (e) {
@@ -71,48 +77,23 @@ async function fetchChannels() {
 }
 
 async function getMakoTicket(channel) {
-    const lp = channel.params?.lp || "/direct/hls/live/2033791/k12/index.m3u8";
+    const lp = channel.params?.lp || "/stream/hls/live/2033791/k12n12wad/index.m3u8";
     const dv = channel.params?.dv || "1e2258089b67f510VgnVCM2000002a0c10acRCRD";
     const deviceId = "web-" + Math.random().toString(36).substring(2, 12);
     const reqUrl = `https://mass.mako.co.il/ClicksStatistics/entitlementsServicesV2.jsp?et=gt&lp=${encodeURIComponent(lp)}&dv=${dv}&rv=AKAMAI&du=${deviceId}`;
 
     try {
-        const res = await fetch(reqUrl, { credentials: "omit" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await fetch(reqUrl);
         const data = await res.json();
         const ticket = data.tickets?.[0]?.ticket;
-        const path = data.tickets?.[0]?.url || lp;
-
         if (ticket) {
-            const separator = path.includes("?") ? "&" : "?";
-            const fullUrl = `https://mako-streaming.akamaized.net${path}${separator}${ticket}`;
-
-            // Parse token expiration (Akamai tokens format: ...exp=1792413767...)
-            const expMatch = ticket.match(/exp=(\d+)/);
-            const expiresAtMs = expMatch ? parseInt(expMatch[1], 10) * 1000 : Date.now() + 14 * 60 * 1000;
-
-            return { url: fullUrl, ticket, expiresAtMs };
+            return `https://mako-streaming.akamaized.net${lp}?${ticket}`;
         }
     } catch (e) {
         console.warn("[NewsGrid] Mako ticket fetch error:", e);
     }
 
-    return { url: channel.url, ticket: null, expiresAtMs: 0 };
-}
-
-function scheduleMakoRenewal(index, channel, expiresAtMs) {
-    if (makoRenewalTimer) clearTimeout(makoRenewalTimer);
-
-    // Renew 2.5 minutes before ticket expiration, or after 12 minutes
-    const renewInMs = Math.max(30000, expiresAtMs - Date.now() - 150000);
-    console.log(`[NewsGrid] Scheduling Mako ticket renewal in ${Math.round(renewInMs / 1000)}s`);
-
-    makoRenewalTimer = setTimeout(async () => {
-        if (selectedChannels[index]?.type === "mako") {
-            console.log("[NewsGrid] Proactively renewing Mako ticket...");
-            await loadTileStream(index, selectedChannels[index]);
-        }
-    }, renewInMs);
+    return channel.url;
 }
 
 // ----------------------------------------------------
@@ -120,15 +101,11 @@ function scheduleMakoRenewal(index, channel, expiresAtMs) {
 // ----------------------------------------------------
 
 function loadSavedChannels() {
-    const saved = localStorage.getItem("newsgrid_web_selected");
+    const saved = localStorage.getItem("newsgrid_ext_selected") || localStorage.getItem("newsgrid_web_selected");
     if (saved) {
         try {
             const urls = JSON.parse(saved);
-            selectedChannels = [];
-            for (const url of urls) {
-                const found = availableChannels.find(c => c.url === url);
-                if (found) selectedChannels.push(found);
-            }
+            selectedChannels = availableChannels.filter(c => urls.includes(c.url)).slice(0, 4);
         } catch (e) {}
     }
 
@@ -138,7 +115,7 @@ function loadSavedChannels() {
             c.name.includes("11") || c.name.includes("12") || c.name.includes("13") || c.name.includes("14")
         ).slice(0, 4);
 
-        if (selectedChannels.length < 4) {
+        if (selectedChannels.length === 0) {
             selectedChannels = availableChannels.slice(0, 4);
         }
     }
@@ -176,30 +153,38 @@ async function loadTileStream(index, channel) {
     videoEl.load();
 
     let streamUrl = channel.url;
-
-    // Handle Mako ticket authentication
+    let makoToken = null;
     if (channel.type === "mako") {
-        const ticketInfo = await getMakoTicket(channel);
-        streamUrl = ticketInfo.url;
-        if (ticketInfo.expiresAtMs > 0) {
-            scheduleMakoRenewal(index, channel, ticketInfo.expiresAtMs);
+        const makoFullUrl = await getMakoTicket(channel);
+        if (makoFullUrl && makoFullUrl.includes("?")) {
+            streamUrl = makoFullUrl;
+            makoToken = makoFullUrl.substring(makoFullUrl.indexOf("?") + 1);
+        } else {
+            streamUrl = makoFullUrl;
         }
     }
 
     if (Hls.isSupported()) {
+        const isCnn = channel.url.includes("cloudfront.net");
         const hlsConfig = {
             enableWorker: true,
-            lowLatencyMode: true,
-            // Optimization: cap resolution to player container size in grid mode
-            capLevelToPlayerSize: fullScreenIndex !== index,
-            maxBufferLength: 10,
-            maxMaxBufferLength: 20,
-            backBufferLength: 0,
+            lowLatencyMode: isCnn,
+            liveSyncDurationCount: isCnn ? 1 : 3,
+            liveMaxLatencyDurationCount: isCnn ? 3 : 10,
+            maxLiveSyncPlaybackRate: 1.1,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
             initialLiveManifestSize: 1,
             autoStartLoad: true,
-            xhrSetup: (xhr) => {
-                // Ensure credentials are false to adhere strictly to CORS
-                xhr.withCredentials = false;
+            xhrSetup: (xhr, url) => {
+                if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
+                    xhr.withCredentials = true;
+                    if (makoToken && !url.includes("hdnea")) {
+                        const sep = url.includes("?") ? "&" : "?";
+                        url = url + sep + makoToken;
+                    }
+                }
+                xhr.open("GET", url, true);
             }
         };
 
@@ -590,6 +575,7 @@ document.getElementById("save-channels")?.addEventListener("click", () => {
         if (found) selectedChannels.push(found);
     }
 
+    localStorage.setItem("newsgrid_ext_selected", JSON.stringify(checkedUrls));
     localStorage.setItem("newsgrid_web_selected", JSON.stringify(checkedUrls));
     modal.classList.remove("open");
     initGrid();
