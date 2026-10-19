@@ -25,11 +25,11 @@ const DEFAULT_CHANNELS = [
     },
     {
         name: "Channel 12",
-        url: "https://mako-streaming.akamaized.net/stream/hls/live/2033791/k12n12wad/index.m3u8",
+        url: "https://mako-streaming.akamaized.net/direct/hls/live/2033791/k12/index.m3u8",
         referer: "https://www.mako.co.il/",
         type: "mako",
         params: {
-            lp: "/stream/hls/live/2033791/k12n12wad/index.m3u8",
+            lp: "/direct/hls/live/2033791/k12/index.m3u8",
             dv: "1e2258089b67f510VgnVCM2000002a0c10acRCRD"
         }
     },
@@ -51,7 +51,8 @@ const DEFAULT_CHANNELS = [
 
 async function fetchChannels() {
     try {
-        const res = await fetch(GIST_URL);
+        // Append cache-buster so updates to the Gist are reflected immediately without waiting for CDN cache
+        const res = await fetch(`${GIST_URL}?_=${Date.now()}`);
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
@@ -70,7 +71,7 @@ async function fetchChannels() {
 }
 
 async function getMakoTicket(channel) {
-    const lp = channel.params?.lp || "/stream/hls/live/2033791/k12n12wad/index.m3u8";
+    const lp = channel.params?.lp || "/direct/hls/live/2033791/k12/index.m3u8";
     const dv = channel.params?.dv || "1e2258089b67f510VgnVCM2000002a0c10acRCRD";
     const deviceId = "web-" + Math.random().toString(36).substring(2, 12);
     const reqUrl = `https://mass.mako.co.il/ClicksStatistics/entitlementsServicesV2.jsp?et=gt&lp=${encodeURIComponent(lp)}&dv=${dv}&rv=AKAMAI&du=${deviceId}`;
