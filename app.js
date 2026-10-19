@@ -168,6 +168,14 @@ async function initGrid() {
                 }
             });
             hlsInstances[i] = hls;
+
+            // Auto-recovery watchdog: if stream stalls on startup, kickstart it automatically after 2 seconds
+            setTimeout(() => {
+                if (videoEl && videoEl.paused && hls) {
+                    hls.startLoad();
+                    videoEl.play().catch(() => {});
+                }
+            }, 2000);
         } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
             videoEl.muted = true;
             videoEl.src = streamUrl;
