@@ -1,27 +1,16 @@
 {
-  "manifest_version": 3,
-  "name": "NewsGrid TV",
-  "version": "1.0",
-  "description": "Quad-view live news grid for Mako, Kan 11, Reshet 13, Channel 14, and CNN",
-  "permissions": [
-    "storage",
-    "declarativeNetRequest",
-    "declarativeNetRequestWithHostAccess"
-  ],
-  "host_permissions": [
-    "*://*.mako.co.il/*",
-    "*://*.akamaized.net/*",
-    "*://*.kan.org.il/*",
-    "*://*.13tv.co.il/*",
-    "*://*.cloudfront.net/*",
-    "*://*.now14.co.il/*",
-    "https://gist.githubusercontent.com/*"
-  ],
-  "action": {},
-  "background": {
-    "service_worker": "background.js"
-  },
-  "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
-  }
+  "name": "NewsGrid Live",
+  "short_name": "NewsGrid",
+  "description": "Quad-view live news stream player",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#070709",
+  "theme_color": "#070709",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
 }
