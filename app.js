@@ -129,6 +129,7 @@ async function initGrid() {
             const isKan = channel.name.includes("Kan 11");
             const hlsConfig = {
                 enableWorker: true,
+                debug: isKan,
                 lowLatencyMode: isCnn,
                 liveSyncDurationCount: isCnn ? 1 : (isKan ? 4 : 2),
                 liveMaxLatencyDurationCount: isCnn ? 3 : (isKan ? 15 : 8),
@@ -156,6 +157,7 @@ async function initGrid() {
             if (isKan) {
                 hls.startLoad();
                 hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                    console.log("[Kan 11 Debug] MANIFEST_PARSED levels:", data.levels);
                     let lowestLevel = 0;
                     let minBw = data.levels[0].bitrate;
                     for (let j = 1; j < data.levels.length; j++) {
@@ -165,9 +167,16 @@ async function initGrid() {
                         }
                     }
                     hls.currentLevel = lowestLevel;
+                    console.log("[Kan 11 Debug] Locked to lowest level index:", lowestLevel, "bitrate:", minBw);
                     videoEl.play().then(() => {
                         setAudioFocus(activeAudioIndex);
-                    }).catch(() => {});
+                    }).catch(err => console.error("[Kan 11 Debug] play error:", err));
+                });
+                hls.on(Hls.Events.FRAG_LOADING, (event, data) => {
+                    console.log("[Kan 11 Debug] FRAG_LOADING:", data.frag.sn, data.frag.url);
+                });
+                hls.on(Hls.Events.FRAG_BUFFERED, (event, data) => {
+                    console.log("[Kan 11 Debug] FRAG_BUFFERED:", data.frag.sn);
                 });
             } else {
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
