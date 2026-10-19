@@ -31,39 +31,6 @@
             -webkit-user-select: none;
         }
 
-        /* Top Unmute Banner */
-        .unmute-banner {
-            position: fixed;
-            top: 14px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 80;
-            background: rgba(18, 18, 24, 0.88);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            padding: 8px 18px;
-            border-radius: 9999px;
-            font-size: 13px;
-            font-weight: 500;
-            color: #ffffff;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-        .unmute-banner.hidden {
-            opacity: 0;
-            pointer-events: none;
-            transform: translate(-50%, -12px);
-        }
-        .unmute-banner:hover {
-            background: rgba(30, 30, 40, 0.95);
-            border-color: var(--accent);
-        }
-
         /* Settings Floating Action Button */
         .settings-fab {
             position: fixed;
@@ -389,12 +356,6 @@
     </style>
 </head>
 <body>
-
-    <!-- Unmute Initial Banner -->
-    <div class="unmute-banner" id="unmute-banner">
-        <span>🔊</span>
-        <span>Click anywhere to enable sound</span>
-    </div>
 
     <!-- Top Right Settings -->
     <button class="settings-fab" id="open-settings" title="Settings (Press S)">⚙️ Channels</button>

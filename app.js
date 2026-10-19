@@ -212,8 +212,11 @@ async function loadTileStream(index, channel) {
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
             hideTileOverlay(index);
-            videoEl.play().catch(() => {});
-            updateAudioState();
+            videoEl.play().then(() => {
+                if (index === activeAudioIndex) {
+                    setAudioFocus(activeAudioIndex);
+                }
+            }).catch(() => {});
         });
 
         hls.on(Hls.Events.FRAG_LOADED, () => {
@@ -246,8 +249,11 @@ async function loadTileStream(index, channel) {
         videoEl.src = streamUrl;
         videoEl.addEventListener("loadedmetadata", () => {
             hideTileOverlay(index);
-            videoEl.play().catch(() => {});
-            updateAudioState();
+            videoEl.play().then(() => {
+                if (index === activeAudioIndex) {
+                    setAudioFocus(activeAudioIndex);
+                }
+            }).catch(() => {});
         });
         videoEl.addEventListener("error", () => {
             showTileOverlay(index, "Playback error", true);
@@ -304,8 +310,6 @@ function hideTileOverlay(index) {
 
 function setAudioFocus(index) {
     activeAudioIndex = index;
-    userHasInteracted = true;
-    dismissUnmuteBanner();
     updateAudioState();
 }
 
@@ -315,12 +319,8 @@ function updateAudioState() {
         if (i === activeAudioIndex) {
             tile.classList.add("active");
             if (videoEl) {
-                if (userHasInteracted && !isAudioMuted) {
-                    videoEl.muted = false;
-                    videoEl.volume = 1.0;
-                } else {
-                    videoEl.muted = true;
-                }
+                videoEl.muted = isAudioMuted;
+                videoEl.volume = 1.0;
             }
         } else {
             tile.classList.remove("active");
@@ -331,25 +331,9 @@ function updateAudioState() {
     });
 }
 
-function enableAudioFromGesture() {
-    if (!userHasInteracted) {
-        userHasInteracted = true;
-        isAudioMuted = false;
-        dismissUnmuteBanner();
-        updateAudioState();
-    }
-}
-
 function toggleMute() {
     isAudioMuted = !isAudioMuted;
     updateAudioState();
-}
-
-function dismissUnmuteBanner() {
-    const banner = document.getElementById("unmute-banner");
-    if (banner) {
-        banner.classList.add("hidden");
-    }
 }
 
 // ----------------------------------------------------
@@ -427,8 +411,6 @@ window.addEventListener("keydown", (e) => {
         return;
     }
 
-    enableAudioFromGesture();
-
     switch (e.key) {
         case "1": setAudioFocus(0); break;
         case "2": setAudioFocus(1); break;
@@ -483,10 +465,6 @@ window.addEventListener("keydown", (e) => {
 // ----------------------------------------------------
 // Click & Event Listeners
 // ----------------------------------------------------
-
-// Unmute banner click
-document.getElementById("unmute-banner")?.addEventListener("click", enableAudioFromGesture);
-window.addEventListener("click", enableAudioFromGesture, { once: true });
 
 // Tile click listeners
 document.querySelectorAll(".tile").forEach(tile => {
