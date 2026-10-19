@@ -240,13 +240,30 @@ function setAudioFocus(index) {
         const videoEl = document.getElementById(`video-${i}`);
         if (i === index) {
             tile.classList.add('active');
-            if (videoEl) { videoEl.muted = false; videoEl.volume = 1.0; }
+            if (videoEl) {
+                videoEl.muted = false;
+                videoEl.volume = 1.0;
+                videoEl.play().catch(err => {
+                    console.warn("[NewsGrid] Audio focus play blocked, keeping muted:", err);
+                    videoEl.muted = true;
+                    videoEl.play().catch(() => {});
+                });
+            }
         } else {
             tile.classList.remove('active');
             if (videoEl) videoEl.muted = true;
         }
     });
 }
+
+// One-time interaction listener to enable audio on first click/tap
+document.addEventListener('click', () => {
+    const activeVideo = document.getElementById(`video-${activeAudioIndex}`);
+    if (activeVideo && activeVideo.muted) {
+        activeVideo.muted = false;
+        activeVideo.play().catch(() => {});
+    }
+}, { once: true });
 
 document.querySelectorAll('.tile').forEach(tile => {
     const index = parseInt(tile.dataset.index);
