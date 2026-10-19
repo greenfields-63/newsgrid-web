@@ -2,450 +2,115 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NewsGrid — Live Quad-View News</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0a0a0c">
-    <meta name="description" content="Simultaneous quad-view live news stream player for Kan 11, Channel 12, Reshet 13, Channel 14, and CNN.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewsGrid</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-            --bg-color: #070709;
-            --tile-bg: #111115;
-            --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.4);
-            --border-default: #1e1e24;
-            --text-main: #f3f4f6;
-            --text-sub: #9ca3af;
-        }
-
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
+            background-color: #000000;
+            color: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             width: 100vw;
             height: 100dvh;
             overflow: hidden;
             position: relative;
-            user-select: none;
-            -webkit-user-select: none;
         }
-
-        /* Settings Floating Action Button */
         .settings-fab {
-            position: fixed;
-            top: 12px;
-            right: 12px;
-            z-index: 60;
-            background: rgba(15, 15, 20, 0.75);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
-            transition: all 0.2s ease;
+            position: fixed; top: 10px; right: 10px; z-index: 60;
+            background: rgba(0, 0, 0, 0.65); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px); padding: 8px 12px; border-radius: 8px; font-size: 13px; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
-        .settings-fab:hover {
-            background: rgba(59, 130, 246, 0.85);
-            border-color: #3b82f6;
-            transform: scale(1.02);
-        }
-        .settings-fab.hidden {
-            display: none !important;
-        }
-
-        /* Grid Layout */
+        .settings-fab:hover { background: rgba(59, 130, 246, 0.8); border-color: #3b82f6; }
         .grid-container {
             width: 100vw;
             height: 100dvh;
             display: grid;
             grid-template-columns: 1fr 1fr;
             grid-template-rows: 1fr 1fr;
-            gap: 6px;
-            padding: 6px;
-            background: var(--bg-color);
-            position: relative;
+            gap: 4px; padding: 4px; background: #000; position: relative;
             overflow: hidden;
         }
-
-        /* Tile */
         .tile {
-            position: relative;
-            background: var(--tile-bg);
-            border-radius: 10px;
-            overflow: hidden;
-            border: 2px solid var(--border-default);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-            outline: none;
+            position: relative; background: #121214; border-radius: 8px;
+            overflow: hidden; border: 2px solid transparent; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
         }
-        .tile:hover {
-            border-color: rgba(255, 255, 255, 0.25);
-        }
-        .tile.active {
-            border-color: var(--accent);
-            box-shadow: 0 0 16px var(--accent-glow);
-        }
+        .tile.active { border-color: #3b82f6; box-shadow: 0 0 12px rgba(59, 130, 246, 0.4); }
         .tile.fullscreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 50;
-            border-radius: 0;
-            border: none;
-            box-shadow: none;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 50; border-radius: 0; border: none;
         }
-
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            background: #000;
-            display: block;
-        }
-
-        /* Channel Badge */
+        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
         .label {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(10, 10, 14, 0.72);
-            backdrop-filter: blur(6px);
-            -webkit-backdrop-filter: blur(6px);
-            padding: 5px 12px;
-            border-radius: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            font-size: 13px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 10;
-            pointer-events: none;
+            position: absolute; top: 12px; left: 12px; background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px); padding: 4px 10px; border-radius: 4px;
+            font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; z-index: 10;
         }
-        .audio-indicator {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #64748b;
-            transition: all 0.3s ease;
-        }
-        .tile.active .audio-indicator {
-            background: #22c55e;
-            box-shadow: 0 0 10px #22c55e;
-            transform: scale(1.15);
-        }
-
-        /* Top-Right Tile Quick Controls */
-        .tile-controls {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            display: flex;
-            gap: 6px;
-            z-index: 10;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-        .tile:hover .tile-controls,
-        .tile.active .tile-controls {
-            opacity: 1;
-        }
-        .icon-btn {
-            background: rgba(10, 10, 14, 0.75);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(4px);
-            color: #fff;
-            width: 30px;
-            height: 30px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .icon-btn:hover {
-            background: rgba(59, 130, 246, 0.85);
-            border-color: #3b82f6;
-        }
-
-        /* Overlay Status (Loading & Errors) */
-        .tile-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: rgba(10, 10, 14, 0.75);
-            z-index: 5;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-        .tile-overlay.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid rgba(255, 255, 255, 0.2);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-bottom: 8px;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .overlay-msg {
-            font-size: 13px;
-            color: var(--text-sub);
-            margin-bottom: 10px;
-        }
-        .overlay-btn {
-            background: #27272a;
-            color: #fff;
-            border: 1px solid #3f3f46;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .overlay-btn:hover {
-            background: #3f3f46;
-        }
-
-        /* Modal Overlay */
+        .audio-indicator { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
+        .tile.active .audio-indicator { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
         .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            z-index: 100;
-            align-items: center;
-            justify-content: center;
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(6px); z-index: 100;
+            align-items: center; justify-content: center;
         }
-        .modal-overlay.open {
-            display: flex;
-        }
+        .modal-overlay.open { display: flex; }
         .modal {
-            background: #18181c;
-            border: 1px solid #2d2d35;
-            border-radius: 14px;
-            width: 480px;
-            max-width: 92vw;
-            max-height: 85dvh;
-            padding: 22px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 24px 38px rgba(0, 0, 0, 0.6);
+            background: #1e1e22; border: 1px solid #333338; border-radius: 12px;
+            width: 440px; max-width: 90vw; max-height: 85dvh; padding: 20px;
+            display: flex; flex-direction: column;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
         }
-        .modal-header {
-            font-size: 17px;
-            font-weight: 600;
-            margin-bottom: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-shrink: 0;
-        }
-        .channel-list {
-            flex: 1;
-            max-height: 50dvh;
-            overflow-y: auto;
-            margin-bottom: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            padding-right: 4px;
-        }
-        .channel-list::-webkit-scrollbar {
-            width: 6px;
-        }
-        .channel-list::-webkit-scrollbar-thumb {
-            background: #33333d;
-            border-radius: 3px;
-        }
-        .channel-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 14px;
-            background: #222228;
-            border: 1px solid #2d2d35;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .channel-item:hover {
-            background: #2a2a32;
-        }
-        .channel-item input {
-            width: 18px;
-            height: 18px;
-            accent-color: var(--accent);
-            cursor: pointer;
-        }
-        .modal-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-shrink: 0;
-            padding-top: 8px;
-            border-top: 1px solid #282830;
-        }
-        .keyboard-hint {
-            font-size: 11px;
-            color: #71717a;
-        }
-        .modal-actions {
-            display: flex;
-            gap: 8px;
-        }
-        .btn {
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s;
-        }
-        .btn-primary { background: var(--accent); color: #fff; }
+        .modal-header { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .channel-list { flex: 1; max-height: 50dvh; overflow-y: auto; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px; }
+        .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #27272a; border-radius: 6px; cursor: pointer; }
+        .channel-item:hover { background: #3f3f46; }
+        .channel-item input { width: 18px; height: 18px; accent-color: #3b82f6; cursor: pointer; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0; }
+        .btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; }
+        .btn-primary { background: #3b82f6; color: #fff; }
         .btn-primary:hover { background: #2563eb; }
-        .btn-secondary { background: #27272a; color: #d4d4d8; }
-        .btn-secondary:hover { background: #3f3f46; }
-
-        /* Responsive on mobile portrait */
-        @media (max-width: 680px) and (orientation: portrait) {
-            .grid-container {
-                grid-template-columns: 1fr;
-                grid-template-rows: 1fr 1fr 1fr 1fr;
-                gap: 4px;
-                padding: 4px;
-            }
-            .label { font-size: 11px; padding: 4px 8px; }
-            .unmute-banner { font-size: 12px; padding: 6px 14px; }
-        }
+        .btn-secondary { background: #3f3f46; color: #ccc; }
+        .btn-secondary:hover { background: #52525b; }
     </style>
 </head>
 <body>
+    <button class="settings-fab" id="open-settings">⚙️ Settings</button>
 
-    <!-- Top Right Settings -->
-    <button class="settings-fab" id="open-settings" title="Settings (Press S)">⚙️ Channels</button>
-
-    <!-- 2x2 Video Grid -->
     <div class="grid-container" id="grid">
-        <div class="tile active" data-index="0" id="tile-0" tabindex="0">
+        <div class="tile active" data-index="0" id="tile-0">
             <video id="video-0" autoplay playsinline muted></video>
-            <div class="label">
-                <span class="audio-indicator"></span>
-                <span id="label-0">Kan 11</span>
-            </div>
-            <div class="tile-controls">
-                <button class="icon-btn fullscreen-btn" data-index="0" title="Toggle Fullscreen (F)">⛶</button>
-            </div>
-            <div class="tile-overlay" id="overlay-0">
-                <div class="spinner"></div>
-                <div class="overlay-msg" id="msg-0">Loading stream...</div>
-                <button class="overlay-btn" id="retry-0">Retry</button>
-            </div>
+            <div class="label"><span class="audio-indicator"></span><span id="label-0">Kan 11</span></div>
         </div>
-
-        <div class="tile" data-index="1" id="tile-1" tabindex="0">
+        <div class="tile" data-index="1" id="tile-1">
             <video id="video-1" autoplay playsinline muted></video>
-            <div class="label">
-                <span class="audio-indicator"></span>
-                <span id="label-1">Channel 12</span>
-            </div>
-            <div class="tile-controls">
-                <button class="icon-btn fullscreen-btn" data-index="1" title="Toggle Fullscreen (F)">⛶</button>
-            </div>
-            <div class="tile-overlay" id="overlay-1">
-                <div class="spinner"></div>
-                <div class="overlay-msg" id="msg-1">Loading stream...</div>
-                <button class="overlay-btn" id="retry-1">Retry</button>
-            </div>
+            <div class="label"><span class="audio-indicator"></span><span id="label-1">Channel 12</span></div>
         </div>
-
-        <div class="tile" data-index="2" id="tile-2" tabindex="0">
+        <div class="tile" data-index="2" id="tile-2">
             <video id="video-2" autoplay playsinline muted></video>
-            <div class="label">
-                <span class="audio-indicator"></span>
-                <span id="label-2">Reshet 13</span>
-            </div>
-            <div class="tile-controls">
-                <button class="icon-btn fullscreen-btn" data-index="2" title="Toggle Fullscreen (F)">⛶</button>
-            </div>
-            <div class="tile-overlay" id="overlay-2">
-                <div class="spinner"></div>
-                <div class="overlay-msg" id="msg-2">Loading stream...</div>
-                <button class="overlay-btn" id="retry-2">Retry</button>
-            </div>
+            <div class="label"><span class="audio-indicator"></span><span id="label-2">Reshet 13</span></div>
         </div>
-
-        <div class="tile" data-index="3" id="tile-3" tabindex="0">
+        <div class="tile" data-index="3" id="tile-3">
             <video id="video-3" autoplay playsinline muted></video>
-            <div class="label">
-                <span class="audio-indicator"></span>
-                <span id="label-3">Channel 14</span>
-            </div>
-            <div class="tile-controls">
-                <button class="icon-btn fullscreen-btn" data-index="3" title="Toggle Fullscreen (F)">⛶</button>
-            </div>
-            <div class="tile-overlay" id="overlay-3">
-                <div class="spinner"></div>
-                <div class="overlay-msg" id="msg-3">Loading stream...</div>
-                <button class="overlay-btn" id="retry-3">Retry</button>
-            </div>
+            <div class="label"><span class="audio-indicator"></span><span id="label-3">Channel 14</span></div>
         </div>
     </div>
 
-    <!-- Channel Selection Modal -->
     <div class="modal-overlay" id="modal">
         <div class="modal">
             <div class="modal-header">
                 <span>Select 4 Channels</span>
-                <span style="font-size: 13px; color: #a1a1aa;" id="count-label">(4/4 selected)</span>
+                <span style="font-size: 12px; color: #aaa;" id="count-label">(4 selected)</span>
             </div>
             <div class="channel-list" id="channel-list"></div>
-            <div class="modal-footer">
-                <div class="keyboard-hint">⌨ Keys 1-4 switch audio • F fullscreen • M mute</div>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" id="close-modal">Cancel</button>
-                    <button class="btn btn-primary" id="save-channels">Save & Apply</button>
-                </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="close-modal">Cancel</button>
+                <button class="btn btn-primary" id="save-channels">Save & Apply</button>
             </div>
         </div>
     </div>
 
-    <script src="hls.min.js"></script>
-    <script src="app.js"></script>
+    <script src="hls.min.js?v=2.2"></script>
+    <script src="app.js?v=2.2"></script>
 </body>
 </html>
