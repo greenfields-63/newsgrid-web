@@ -153,14 +153,29 @@ async function initGrid() {
             const hls = new Hls(hlsConfig);
             hls.loadSource(streamUrl);
             hls.attachMedia(videoEl);
-            if (channel.name.includes("Kan 11")) {
+            if (isKan) {
                 hls.startLoad();
+                hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                    let lowestLevel = 0;
+                    let minBw = data.levels[0].bitrate;
+                    for (let j = 1; j < data.levels.length; j++) {
+                        if (data.levels[j].bitrate < minBw) {
+                            minBw = data.levels[j].bitrate;
+                            lowestLevel = j;
+                        }
+                    }
+                    hls.currentLevel = lowestLevel;
+                    videoEl.play().then(() => {
+                        setAudioFocus(activeAudioIndex);
+                    }).catch(() => {});
+                });
+            } else {
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    videoEl.play().then(() => {
+                        setAudioFocus(activeAudioIndex);
+                    }).catch(() => {});
+                });
             }
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                videoEl.play().then(() => {
-                    setAudioFocus(activeAudioIndex);
-                }).catch(() => {});
-            });
 
             hls.on(Hls.Events.ERROR, async (event, data) => {
                 if (data.fatal) {
