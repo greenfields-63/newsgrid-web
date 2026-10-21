@@ -191,9 +191,9 @@ async function initTile(i) {
                         initTile(i);
                         break;
                 }
-            } else if (data.details === 'bufferStalledError' || data.details === 'fragLoadError') {
-                initTile(i);
-            }
+            } 
+            // FIXED: Removed the else-if block that checked for 'bufferStalledError' and 'fragLoadError'
+            // Now hls.js will handle these non-fatal buffering events natively.
         });
         hlsInstances[i] = hls;
     } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
@@ -309,12 +309,13 @@ setInterval(() => {
         if (v && h) {
             if (!v.paused && v.readyState < 3) {
                 stallCounts[i]++;
-                if (stallCounts[i] >= 2) {
+                // FIXED: Increased threshold from 2 to 5 to avoid premature restarts during normal buffering
+                if (stallCounts[i] >= 5) {
                     stallCounts[i] = 0;
                     initTile(i);
                 } else {
                     h.startLoad();
-                    h.recoverMediaError();
+                    // FIXED: Removed h.recoverMediaError() here so it doesn't break state while buffering natively
                     v.play().catch(() => {});
                 }
             } else {
