@@ -95,144 +95,121 @@ function loadSavedSelection() {
     initGrid();
 }
 
-async function initGrid() {
-    for (let i = 0; i < 4; i++) {
-        if (hlsInstances[i]) {
-            hlsInstances[i].destroy();
-            hlsInstances[i] = null;
-        }
-        const channel = selectedChannels[i];
-        const videoEl = document.getElementById(`video-${i}`);
-        const labelEl = document.getElementById(`label-${i}`);
+let stallCounts = [0, 0, 0, 0];
 
-        if (!channel) {
-            labelEl.textContent = "Empty";
-            continue;
-        }
+async function initTile(i) {
+    if (hlsInstances[i]) {
+        hlsInstances[i].destroy();
+        hlsInstances[i] = null;
+    }
+    const channel = selectedChannels[i];
+    const videoEl = document.getElementById(`video-${i}`);
+    const labelEl = document.getElementById(`label-${i}`);
 
-        labelEl.textContent = channel.name;
+    if (!channel) {
+        if (labelEl) labelEl.textContent = "Empty";
+        return;
+    }
 
-        let streamUrl = channel.url;
-        let makoToken = null;
-        if (channel.type === "mako") {
-            const makoFullUrl = await getMakoTicket(channel);
-            if (makoFullUrl && makoFullUrl.includes("?")) {
-                streamUrl = makoFullUrl;
-                makoToken = makoFullUrl.substring(makoFullUrl.indexOf("?") + 1);
-            } else {
-                streamUrl = makoFullUrl;
-            }
-        }
+    if (labelEl) labelEl.textContent = channel.name;
 
-        if (Hls.isSupported()) {
-            const isCnn = channel.url.includes("cloudfront.net");
-            const isKan = channel.name.includes("Kan 11");
-            const hlsConfig = {
-                enableWorker: true,
-                debug: false,
-                lowLatencyMode: false,
-                liveSyncDurationCount: isCnn ? 3 : (isKan ? 4 : 2),
-                liveMaxLatencyDurationCount: isCnn ? 8 : (isKan ? 15 : 8),
-                maxLiveSyncPlaybackRate: 1.1,
-                maxBufferLength: 30,
-                maxMaxBufferLength: 60,
-                abrEwmaDefaultEstimate: 2000000,
-                startLevel: isCnn ? undefined : 0,
-                autoStartLoad: true,
-                fragLoadMaxRetry: 6,
-                fragLoadRetryDelay: 1000,
-                maxLoadingDelay: 4,
-                xhrSetup: (xhr, url) => {
-                    if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
-                        xhr.withCredentials = true;
-                        if (makoToken && !url.includes("hdnea")) {
-                            const sep = url.includes("?") ? "&" : "?";
-                            url = url + sep + makoToken;
-                        }
-                    }
-                    xhr.open('GET', url, true);
-                }
-            };
-            videoEl.muted = true;
-            const hls = new Hls(hlsConfig);
-            hls.loadSource(streamUrl);
-            hls.attachMedia(videoEl);
-            if (isKan) {
-                hls.startLoad();
-                hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                    let lowestLevel = 0;
-                    let minBw = data.levels[0].bitrate;
-                    for (let j = 1; j < data.levels.length; j++) {
-                        if (data.levels[j].bitrate < minBw) {
-                            minBw = data.levels[j].bitrate;
-                            lowestLevel = j;
-                        }
-                    }
-                    hls.currentLevel = lowestLevel;
-                    videoEl.muted = true;
-                    videoEl.play().then(() => {
-                        setAudioFocus(activeAudioIndex);
-                    }).catch(err => {
-                        videoEl.muted = true;
-                        videoEl.play().catch(() => {});
-                    });
-                });
-            } else {
-                hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    videoEl.play().then(() => {
-                        setAudioFocus(activeAudioIndex);
-                    }).catch(() => {});
-                });
-            }
-
-            hls.on(Hls.Events.ERROR, async (event, data) => {
-                if (data.fatal) {
-                    switch (data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR:
-                            hls.startLoad();
-                            break;
-                        case Hls.ErrorTypes.MEDIA_ERROR:
-                            hls.recoverMediaError();
-                            break;
-                        default:
-                            hls.recoverMediaError();
-                            hls.startLoad();
-                            break;
-                    }
-                } else if (data.details === 'bufferStalledError' || data.details === 'fragLoadError') {
-                    hls.startLoad();
-                    videoEl.play().catch(() => {});
-                }
-            });
-            hlsInstances[i] = hls;
-
-            // Kan 11 startup stall recovery watchdog
-            if (isKan) {
-                setTimeout(() => {
-                    if (videoEl && videoEl.paused && hls) {
-                        hls.recoverMediaError();
-                        hls.startLoad();
-                        videoEl.play().catch(() => {});
-                    }
-                }, 2500);
-            }
-
-            // Auto-recovery watchdog: if stream stalls on startup, kickstart it automatically after 2 seconds
-            setTimeout(() => {
-                if (videoEl && videoEl.paused && hls) {
-                    hls.startLoad();
-                    videoEl.play().catch(() => {});
-                }
-            }, 2000);
-        } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-            videoEl.muted = true;
-            videoEl.src = streamUrl;
-            videoEl.play().then(() => {
-                setAudioFocus(activeAudioIndex);
-            }).catch(() => {});
+    let streamUrl = channel.url;
+    let makoToken = null;
+    if (channel.type === "mako") {
+        const makoFullUrl = await getMakoTicket(channel);
+        if (makoFullUrl && makoFullUrl.includes("?")) {
+            streamUrl = makoFullUrl;
+            makoToken = makoFullUrl.substring(makoFullUrl.indexOf("?") + 1);
+        } else {
+            streamUrl = makoFullUrl;
         }
     }
+
+    if (Hls.isSupported()) {
+        const isCnn = channel.url.includes("cloudfront.net");
+        const isKan = channel.name.includes("Kan 11");
+        const hlsConfig = {
+            enableWorker: true,
+            debug: false,
+            lowLatencyMode: false,
+            liveSyncDurationCount: isCnn ? 3 : (isKan ? 4 : 2),
+            liveMaxLatencyDurationCount: isCnn ? 8 : (isKan ? 15 : 8),
+            maxLiveSyncPlaybackRate: 1.1,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
+            abrEwmaDefaultEstimate: 2000000,
+            startLevel: isCnn ? undefined : 0,
+            autoStartLoad: true,
+            fragLoadMaxRetry: 6,
+            fragLoadRetryDelay: 1000,
+            maxLoadingDelay: 4,
+            xhrSetup: (xhr, url) => {
+                if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
+                    xhr.withCredentials = true;
+                    if (makoToken && !url.includes("hdnea")) {
+                        const sep = url.includes("?") ? "&" : "?";
+                        url = url + sep + makoToken;
+                    }
+                }
+                xhr.open('GET', url, true);
+            }
+        };
+        videoEl.muted = (i !== activeAudioIndex);
+        const hls = new Hls(hlsConfig);
+        hls.loadSource(streamUrl);
+        hls.attachMedia(videoEl);
+        if (isKan) {
+            hls.startLoad();
+            hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                let lowestLevel = 0;
+                let minBw = data.levels[0].bitrate;
+                for (let j = 1; j < data.levels.length; j++) {
+                    if (data.levels[j].bitrate < minBw) {
+                        minBw = data.levels[j].bitrate;
+                        lowestLevel = j;
+                    }
+                }
+                hls.currentLevel = lowestLevel;
+                videoEl.play().catch(() => {});
+            });
+        } else {
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                videoEl.play().catch(() => {});
+            });
+        }
+
+        hls.on(Hls.Events.ERROR, async (event, data) => {
+            if (data.fatal) {
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        hls.startLoad();
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        initTile(i);
+                        break;
+                }
+            } else if (data.details === 'bufferStalledError' || data.details === 'fragLoadError') {
+                hls.startLoad();
+                videoEl.play().catch(() => {});
+            }
+        });
+        hlsInstances[i] = hls;
+    } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+        videoEl.muted = (i !== activeAudioIndex);
+        videoEl.src = streamUrl;
+        videoEl.play().catch(() => {});
+    }
+}
+
+async function initGrid() {
+    for (let i = 0; i < 4; i++) {
+        await initTile(i);
+    }
     setAudioFocus(activeAudioIndex);
+}
 }
 
 function setAudioFocus(index) {
@@ -332,9 +309,17 @@ setInterval(() => {
         const h = hlsInstances[i];
         if (v && h) {
             if (!v.paused && v.readyState < 3) {
-                h.startLoad();
-                h.recoverMediaError();
-                v.play().catch(() => {});
+                stallCounts[i]++;
+                if (stallCounts[i] >= 2) {
+                    stallCounts[i] = 0;
+                    initTile(i);
+                } else {
+                    h.startLoad();
+                    h.recoverMediaError();
+                    v.play().catch(() => {});
+                }
+            } else {
+                stallCounts[i] = 0;
             }
             if (v.paused && selectedChannels[i]) {
                 v.play().catch(() => {});
