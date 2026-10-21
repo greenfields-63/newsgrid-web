@@ -131,18 +131,18 @@ async function initTile(i) {
         const hlsConfig = {
             enableWorker: true,
             debug: false,
-            lowLatencyMode: false,
-            liveSyncDurationCount: isCnn ? 3 : (isKan ? 4 : 2),
-            liveMaxLatencyDurationCount: isCnn ? 8 : (isKan ? 15 : 8),
+            lowLatencyMode: isCnn,
+            liveSyncDurationCount: isCnn ? 1 : (isKan ? 4 : 2),
+            liveMaxLatencyDurationCount: isCnn ? 3 : (isKan ? 15 : 8),
             maxLiveSyncPlaybackRate: 1.1,
             maxBufferLength: 30,
             maxMaxBufferLength: 60,
             abrEwmaDefaultEstimate: 2000000,
             startLevel: isCnn ? undefined : 0,
             autoStartLoad: true,
-            fragLoadMaxRetry: 6,
-            fragLoadRetryDelay: 1000,
-            maxLoadingDelay: 4,
+            fragLoadMaxRetry: isCnn ? 3 : 6,
+            fragLoadRetryDelay: isCnn ? 500 : 1000,
+            maxLoadingDelay: isCnn ? 2 : 4,
             xhrSetup: (xhr, url) => {
                 if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
                     xhr.withCredentials = true;
