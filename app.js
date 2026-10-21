@@ -158,7 +158,7 @@ async function initTile(i) {
         const hls = new Hls(hlsConfig);
         hls.loadSource(streamUrl);
         hls.attachMedia(videoEl);
-        if (isKan) {
+        if (isKan || isCnn) {
             hls.startLoad();
             hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
                 let lowestLevel = 0;
