@@ -330,10 +330,14 @@ setInterval(() => {
     for (let i = 0; i < 4; i++) {
         const v = document.getElementById(`video-${i}`);
         const h = hlsInstances[i];
-        if (v && h && !v.paused && v.readyState < 3) {
-            h.startLoad();
-            if (selectedChannels[i] && selectedChannels[i].url && selectedChannels[i].url.includes("cloudfront.net")) {
+        if (v && h) {
+            if (!v.paused && v.readyState < 3) {
+                h.startLoad();
                 h.recoverMediaError();
+                v.play().catch(() => {});
+            }
+            if (v.paused && selectedChannels[i]) {
+                v.play().catch(() => {});
             }
         }
     }
