@@ -182,7 +182,7 @@ async function initTile(i) {
             if (data.fatal) {
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                        hls.startLoad();
+                        initTile(i);
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
                         hls.recoverMediaError();
@@ -192,8 +192,7 @@ async function initTile(i) {
                         break;
                 }
             } else if (data.details === 'bufferStalledError' || data.details === 'fragLoadError') {
-                hls.startLoad();
-                videoEl.play().catch(() => {});
+                initTile(i);
             }
         });
         hlsInstances[i] = hls;
