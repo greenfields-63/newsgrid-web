@@ -123,6 +123,8 @@ async function initTile(i) {
         } else {
             streamUrl = makoFullUrl;
         }
+    } else if (channel.url.includes("cloudfront.net")) {
+        streamUrl = "https://corsproxy.io/?" + encodeURIComponent(channel.url);
     }
 
     if (Hls.isSupported()) {
