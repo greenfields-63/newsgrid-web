@@ -210,7 +210,6 @@ async function initGrid() {
     }
     setAudioFocus(activeAudioIndex);
 }
-}
 
 function setAudioFocus(index) {
     activeAudioIndex = index;
