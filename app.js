@@ -129,19 +129,19 @@ async function initGrid() {
             const isKan = channel.name.includes("Kan 11");
             const hlsConfig = {
                 enableWorker: true,
-                debug: isKan,
-                lowLatencyMode: isCnn,
-                liveSyncDurationCount: isCnn ? 1 : (isKan ? 4 : 2),
-                liveMaxLatencyDurationCount: isCnn ? 3 : (isKan ? 15 : 8),
+                debug: false,
+                lowLatencyMode: false,
+                liveSyncDurationCount: isCnn ? 3 : (isKan ? 4 : 2),
+                liveMaxLatencyDurationCount: isCnn ? 8 : (isKan ? 15 : 8),
                 maxLiveSyncPlaybackRate: 1.1,
                 maxBufferLength: 30,
                 maxMaxBufferLength: 60,
                 abrEwmaDefaultEstimate: 2000000,
                 startLevel: isCnn ? undefined : 0,
                 autoStartLoad: true,
-                fragLoadMaxRetry: isCnn ? 3 : 6,
-                fragLoadRetryDelay: isCnn ? 500 : 1000,
-                maxLoadingDelay: isCnn ? 2 : 4,
+                fragLoadMaxRetry: 6,
+                fragLoadRetryDelay: 1000,
+                maxLoadingDelay: 4,
                 xhrSetup: (xhr, url) => {
                     if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
                         xhr.withCredentials = true;
@@ -160,7 +160,6 @@ async function initGrid() {
             if (isKan) {
                 hls.startLoad();
                 hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                    console.log("[Kan 11 Debug] MANIFEST_PARSED levels:", data.levels);
                     let lowestLevel = 0;
                     let minBw = data.levels[0].bitrate;
                     for (let j = 1; j < data.levels.length; j++) {
@@ -170,21 +169,13 @@ async function initGrid() {
                         }
                     }
                     hls.currentLevel = lowestLevel;
-                    console.log("[Kan 11 Debug] Locked to lowest level index:", lowestLevel, "bitrate:", minBw);
                     videoEl.muted = true;
                     videoEl.play().then(() => {
                         setAudioFocus(activeAudioIndex);
                     }).catch(err => {
-                        console.error("[Kan 11 Debug] play error:", err);
                         videoEl.muted = true;
                         videoEl.play().catch(() => {});
                     });
-                });
-                hls.on(Hls.Events.FRAG_LOADING, (event, data) => {
-                    console.log("[Kan 11 Debug] FRAG_LOADING:", data.frag.sn, data.frag.url);
-                });
-                hls.on(Hls.Events.FRAG_BUFFERED, (event, data) => {
-                    console.log("[Kan 11 Debug] FRAG_BUFFERED:", data.frag.sn);
                 });
             } else {
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -197,11 +188,18 @@ async function initGrid() {
             hls.on(Hls.Events.ERROR, async (event, data) => {
                 if (data.fatal) {
                     switch (data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
-                        case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
-                        default: hls.destroy(); break;
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            hls.recoverMediaError();
+                            hls.startLoad();
+                            break;
                     }
-                } else if (data.details === 'bufferStalledError') {
+                } else if (data.details === 'bufferStalledError' || data.details === 'fragLoadError') {
                     hls.startLoad();
                     videoEl.play().catch(() => {});
                 }
