@@ -138,7 +138,7 @@ async function initTile(i) {
             maxBufferLength: 30,
             maxMaxBufferLength: 60,
             abrEwmaDefaultEstimate: 2000000,
-            startLevel: isCnn ? undefined : 0,
+            startLevel: isCnn ? -1 : 0,
             autoStartLoad: true,
             fragLoadMaxRetry: 6,
             fragLoadRetryDelay: 1000,
@@ -158,7 +158,7 @@ async function initTile(i) {
         const hls = new Hls(hlsConfig);
         hls.loadSource(streamUrl);
         hls.attachMedia(videoEl);
-        if (isKan || isCnn) {
+        if (isKan) {
             hls.startLoad();
             hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
                 let lowestLevel = 0;
@@ -173,6 +173,7 @@ async function initTile(i) {
                 videoEl.play().catch(() => {});
             });
         } else {
+            hls.startLoad();
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 videoEl.play().catch(() => {});
             });
