@@ -192,7 +192,8 @@ async function initTile(i) {
                         break;
                 }
             } else if (data.details === 'bufferStalledError' || data.details === 'fragLoadError') {
-                initTile(i);
+                hls.startLoad();
+                videoEl.play().catch(() => {});
             }
         });
         hlsInstances[i] = hls;
