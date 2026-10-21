@@ -139,6 +139,9 @@ async function initGrid() {
                 abrEwmaDefaultEstimate: 2000000,
                 startLevel: isCnn ? undefined : 0,
                 autoStartLoad: true,
+                fragLoadMaxRetry: isCnn ? 3 : 6,
+                fragLoadRetryDelay: isCnn ? 500 : 1000,
+                maxLoadingDelay: isCnn ? 2 : 4,
                 xhrSetup: (xhr, url) => {
                     if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
                         xhr.withCredentials = true;
@@ -331,6 +334,9 @@ setInterval(() => {
         const h = hlsInstances[i];
         if (v && h && !v.paused && v.readyState < 3) {
             h.startLoad();
+            if (selectedChannels[i] && selectedChannels[i].url && selectedChannels[i].url.includes("cloudfront.net")) {
+                h.recoverMediaError();
+            }
         }
     }
-}, 4000);
+}, 3000);
