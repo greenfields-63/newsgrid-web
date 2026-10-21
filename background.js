@@ -33,7 +33,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 chrome.declarativeNetRequest.updateDynamicRules({
-  removeRuleIds: [1, 2, 3, 4],
+  removeRuleIds: [1, 2, 3, 4, 5],
   addRules: [
     {
       "id": 1,
@@ -99,7 +99,22 @@ chrome.declarativeNetRequest.updateDynamicRules({
         ]
       },
       "condition": {
-        "urlFilter": "cloudfront.net",
+        "urlFilter": "d18b0e6mopany4.cloudfront.net",
+        "resourceTypes": ["xmlhttprequest", "media"]
+      }
+    },
+    {
+      "id": 5,
+      "priority": 1,
+      "action": {
+        "type": "modifyHeaders",
+        "requestHeaders": [
+          { "header": "Referer", "operation": "set", "value": "https://www.cnn.com/" },
+          { "header": "Origin", "operation": "set", "value": "https://www.cnn.com" }
+        ]
+      },
+      "condition": {
+        "urlFilter": "d3bp6dwmpbdajl.cloudfront.net",
         "resourceTypes": ["xmlhttprequest", "media"]
       }
     }
