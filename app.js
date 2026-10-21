@@ -80,38 +80,22 @@ function loadSavedSelection() {
     const saved = localStorage.getItem("newsgrid_ext_selected");
     if (saved) {
         try {
-            const items = JSON.parse(saved);
-            selectedChannels = [];
-            for (const item of items) {
-                const found = availableChannels.find(c => c.url === item || c.name === item || (c.name.toLowerCase().includes("cnn") && (typeof item === "string" && item.includes("cloudfront.net"))));
-                if (found && !selectedChannels.some(s => s.name === found.name)) {
-                    selectedChannels.push(found);
-                }
-            }
+            const urls = JSON.parse(saved);
+            selectedChannels = availableChannels.filter(c => urls.includes(c.url)).slice(0, 4);
         } catch (e) {}
     }
     if (selectedChannels.length < 4) {
-        const defaults = availableChannels.filter(c =>
-            c.name.includes("11") || c.name.includes("12") || c.name.includes("13") || c.name.includes("14") || c.name.toLowerCase().includes("cnn")
-        );
-        for (const def of defaults) {
-            if (selectedChannels.length < 4 && !selectedChannels.some(s => s.name === def.name)) {
-                selectedChannels.push(def);
-            }
-        }
-        if (selectedChannels.length < 4) {
-            for (const c of availableChannels) {
-                if (selectedChannels.length < 4 && !selectedChannels.some(s => s.name === c.name)) {
-                    selectedChannels.push(c);
-                }
-            }
+        selectedChannels = availableChannels.filter(c =>
+            c.name.includes("11") || c.name.includes("12") || c.name.includes("13") || c.name.includes("14")
+        ).slice(0, 4);
+        if (selectedChannels.length === 0) {
+            selectedChannels = availableChannels.slice(0, 4);
         }
     }
     initGrid();
 }
 
 let stallCounts = [0, 0, 0, 0];
-let fragErrorCounts = [0, 0, 0, 0];
 
 async function initTile(i) {
     if (hlsInstances[i]) {
@@ -194,10 +178,6 @@ async function initTile(i) {
             });
         }
 
-        hls.on(Hls.Events.FRAG_LOADED, () => {
-            fragErrorCounts[i] = 0;
-        });
-
         hls.on(Hls.Events.ERROR, async (event, data) => {
             if (data.fatal) {
                 switch (data.type) {
@@ -212,14 +192,7 @@ async function initTile(i) {
                         break;
                 }
             } else if (data.details === 'bufferStalledError' || data.details === 'fragLoadError') {
-                fragErrorCounts[i]++;
-                if (fragErrorCounts[i] >= 3) {
-                    fragErrorCounts[i] = 0;
-                    await fetchGistChannels();
-                } else {
-                    hls.startLoad();
-                }
-                videoEl.play().catch(() => {});
+                initTile(i);
             }
         });
         hlsInstances[i] = hls;
