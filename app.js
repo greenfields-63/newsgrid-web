@@ -80,16 +80,31 @@ function loadSavedSelection() {
     const saved = localStorage.getItem("newsgrid_ext_selected");
     if (saved) {
         try {
-            const urls = JSON.parse(saved);
-            selectedChannels = availableChannels.filter(c => urls.includes(c.url)).slice(0, 4);
+            const items = JSON.parse(saved);
+            selectedChannels = [];
+            for (const item of items) {
+                const found = availableChannels.find(c => c.url === item || c.name === item || (c.name.toLowerCase().includes("cnn") && (typeof item === "string" && item.includes("cloudfront.net"))));
+                if (found && !selectedChannels.some(s => s.name === found.name)) {
+                    selectedChannels.push(found);
+                }
+            }
         } catch (e) {}
     }
     if (selectedChannels.length < 4) {
-        selectedChannels = availableChannels.filter(c =>
-            c.name.includes("11") || c.name.includes("12") || c.name.includes("13") || c.name.includes("14")
-        ).slice(0, 4);
-        if (selectedChannels.length === 0) {
-            selectedChannels = availableChannels.slice(0, 4);
+        const defaults = availableChannels.filter(c =>
+            c.name.includes("11") || c.name.includes("12") || c.name.includes("13") || c.name.includes("14") || c.name.toLowerCase().includes("cnn")
+        );
+        for (const def of defaults) {
+            if (selectedChannels.length < 4 && !selectedChannels.some(s => s.name === def.name)) {
+                selectedChannels.push(def);
+            }
+        }
+        if (selectedChannels.length < 4) {
+            for (const c of availableChannels) {
+                if (selectedChannels.length < 4 && !selectedChannels.some(s => s.name === c.name)) {
+                    selectedChannels.push(c);
+                }
+            }
         }
     }
     initGrid();
@@ -200,8 +215,7 @@ async function initTile(i) {
                 fragErrorCounts[i]++;
                 if (fragErrorCounts[i] >= 3) {
                     fragErrorCounts[i] = 0;
-                    hls.loadSource(streamUrl);
-                    hls.startLoad();
+                    await fetchGistChannels();
                 } else {
                     hls.startLoad();
                 }
