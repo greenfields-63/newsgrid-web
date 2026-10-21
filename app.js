@@ -126,19 +126,18 @@ async function initTile(i) {
     }
 
     if (Hls.isSupported()) {
-        const isCnn = channel.url.includes("cloudfront.net");
         const isKan = channel.name.includes("Kan 11");
         const hlsConfig = {
             enableWorker: true,
             debug: false,
             lowLatencyMode: false,
-            liveSyncDurationCount: isCnn ? 3 : (isKan ? 4 : 2),
-            liveMaxLatencyDurationCount: isCnn ? 10 : (isKan ? 15 : 8),
+            liveSyncDurationCount: isKan ? 4 : 2,
+            liveMaxLatencyDurationCount: isKan ? 15 : 8,
             maxLiveSyncPlaybackRate: 1.1,
             maxBufferLength: 30,
             maxMaxBufferLength: 60,
             abrEwmaDefaultEstimate: 2000000,
-            startLevel: isCnn ? -1 : 0,
+            startLevel: 0,
             autoStartLoad: true,
             fragLoadMaxRetry: 6,
             fragLoadRetryDelay: 1000,
@@ -183,31 +182,17 @@ async function initTile(i) {
             if (data.fatal) {
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                        if (isCnn) {
-                            hls.startLoad();
-                        } else {
-                            initTile(i);
-                        }
+                        initTile(i);
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
                         hls.recoverMediaError();
                         break;
                     default:
-                        if (isCnn) {
-                            hls.startLoad();
-                            hls.recoverMediaError();
-                        } else {
-                            initTile(i);
-                        }
+                        initTile(i);
                         break;
                 }
             } else if (data.details === 'bufferStalledError' || data.details === 'fragLoadError') {
-                if (isCnn) {
-                    hls.recoverMediaError();
-                    hls.startLoad();
-                } else {
-                    initTile(i);
-                }
+                initTile(i);
             }
         });
         hlsInstances[i] = hls;
@@ -320,21 +305,13 @@ setInterval(() => {
     for (let i = 0; i < 4; i++) {
         const v = document.getElementById(`video-${i}`);
         const h = hlsInstances[i];
-        const channel = selectedChannels[i];
-        const isCnnChannel = channel && channel.url && channel.url.includes("cloudfront.net");
 
         if (v && h) {
             if (!v.paused && v.readyState < 3) {
                 stallCounts[i]++;
-                if (stallCounts[i] >= (isCnnChannel ? 6 : 2)) {
+                if (stallCounts[i] >= 2) {
                     stallCounts[i] = 0;
-                    if (isCnnChannel) {
-                        h.startLoad();
-                        h.recoverMediaError();
-                        v.play().catch(() => {});
-                    } else {
-                        initTile(i);
-                    }
+                    initTile(i);
                 } else {
                     h.startLoad();
                     h.recoverMediaError();
