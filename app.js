@@ -183,17 +183,31 @@ async function initTile(i) {
             if (data.fatal) {
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                        initTile(i);
+                        if (isCnn) {
+                            hls.startLoad();
+                        } else {
+                            initTile(i);
+                        }
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
                         hls.recoverMediaError();
                         break;
                     default:
-                        initTile(i);
+                        if (isCnn) {
+                            hls.startLoad();
+                            hls.recoverMediaError();
+                        } else {
+                            initTile(i);
+                        }
                         break;
                 }
             } else if (data.details === 'bufferStalledError' || data.details === 'fragLoadError') {
-                initTile(i);
+                if (isCnn) {
+                    hls.recoverMediaError();
+                    hls.startLoad();
+                } else {
+                    initTile(i);
+                }
             }
         });
         hlsInstances[i] = hls;
@@ -306,12 +320,21 @@ setInterval(() => {
     for (let i = 0; i < 4; i++) {
         const v = document.getElementById(`video-${i}`);
         const h = hlsInstances[i];
+        const channel = selectedChannels[i];
+        const isCnnChannel = channel && channel.url && channel.url.includes("cloudfront.net");
+
         if (v && h) {
             if (!v.paused && v.readyState < 3) {
                 stallCounts[i]++;
-                if (stallCounts[i] >= 2) {
+                if (stallCounts[i] >= (isCnnChannel ? 6 : 2)) {
                     stallCounts[i] = 0;
-                    initTile(i);
+                    if (isCnnChannel) {
+                        h.startLoad();
+                        h.recoverMediaError();
+                        v.play().catch(() => {});
+                    } else {
+                        initTile(i);
+                    }
                 } else {
                     h.startLoad();
                     h.recoverMediaError();
