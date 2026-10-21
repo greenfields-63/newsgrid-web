@@ -96,6 +96,7 @@ function loadSavedSelection() {
 }
 
 let stallCounts = [0, 0, 0, 0];
+let fragErrorCounts = [0, 0, 0, 0];
 
 async function initTile(i) {
     if (hlsInstances[i]) {
@@ -178,6 +179,10 @@ async function initTile(i) {
             });
         }
 
+        hls.on(Hls.Events.FRAG_LOADED, () => {
+            fragErrorCounts[i] = 0;
+        });
+
         hls.on(Hls.Events.ERROR, async (event, data) => {
             if (data.fatal) {
                 switch (data.type) {
@@ -192,7 +197,14 @@ async function initTile(i) {
                         break;
                 }
             } else if (data.details === 'bufferStalledError' || data.details === 'fragLoadError') {
-                hls.startLoad();
+                fragErrorCounts[i]++;
+                if (fragErrorCounts[i] >= 3) {
+                    fragErrorCounts[i] = 0;
+                    hls.loadSource(streamUrl);
+                    hls.startLoad();
+                } else {
+                    hls.startLoad();
+                }
                 videoEl.play().catch(() => {});
             }
         });
