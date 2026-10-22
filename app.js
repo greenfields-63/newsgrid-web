@@ -202,33 +202,27 @@ async function initTile(i) {
         hls.on(Hls.Events.ERROR, async (event, data) => {
             logDebug('ERROR', 'HLS Error', { tile: i, channel: channel.name, type: data.type, details: data.details, fatal: data.fatal, url: data.url, response: data.response });
             const isCnn = channel.url.includes("cloudfront.net");
+            
             if (data.fatal) {
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
+                    case Hls.ErrorTypes.MEDIA_ERROR:
                         if (isCnn) {
+                            // Let hls.js handle its internal media state recovery naturally
                             hls.recoverMediaError();
-                            if (hls.liveSyncPosition) {
-                                hls.nextLoadPosition = hls.liveSyncPosition;
-                                if (videoEl) videoEl.currentTime = hls.liveSyncPosition;
-                            }
+                            
+                            // Simply append the cache-buster and reload the source.
                             const freshUrl = streamUrl + (streamUrl.includes('?') ? '&' : '?') + '_ts=' + Date.now();
                             hls.loadSource(freshUrl);
                             hls.startLoad();
                             videoEl.play().catch(() => {});
-                        } else {
+                        } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                             initTile(i);
                         }
-                        break;
-                    case Hls.ErrorTypes.MEDIA_ERROR:
-                        hls.recoverMediaError();
                         break;
                     default:
                         if (isCnn) {
                             hls.recoverMediaError();
-                            if (hls.liveSyncPosition) {
-                                hls.nextLoadPosition = hls.liveSyncPosition;
-                                if (videoEl) videoEl.currentTime = hls.liveSyncPosition;
-                            }
                             const freshUrl = streamUrl + (streamUrl.includes('?') ? '&' : '?') + '_ts=' + Date.now();
                             hls.loadSource(freshUrl);
                             hls.startLoad();
@@ -358,13 +352,13 @@ setInterval(() => {
         if (v && h) {
             if (!v.paused && v.readyState < 3) {
                 stallCounts[i]++;
-                // FIXED: Increased threshold from 2 to 5 to avoid premature restarts during normal buffering
+                // Increased threshold from 2 to 5 to avoid premature restarts during normal buffering
                 if (stallCounts[i] >= 5) {
                     stallCounts[i] = 0;
                     initTile(i);
                 } else {
                     h.startLoad();
-                    // FIXED: Removed h.recoverMediaError() here so it doesn't break state while buffering natively
+                    // Removed h.recoverMediaError() here so it doesn't break state while buffering natively
                     v.play().catch(() => {});
                 }
             } else {
