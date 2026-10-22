@@ -201,16 +201,29 @@ async function initTile(i) {
 
         hls.on(Hls.Events.ERROR, async (event, data) => {
             logDebug('ERROR', 'HLS Error', { tile: i, channel: channel.name, type: data.type, details: data.details, fatal: data.fatal, url: data.url, response: data.response });
+            const isCnn = channel.url.includes("cloudfront.net");
             if (data.fatal) {
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                        initTile(i);
+                        if (isCnn) {
+                            hls.loadSource(streamUrl);
+                            hls.startLoad();
+                            videoEl.play().catch(() => {});
+                        } else {
+                            initTile(i);
+                        }
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
                         hls.recoverMediaError();
                         break;
                     default:
-                        initTile(i);
+                        if (isCnn) {
+                            hls.loadSource(streamUrl);
+                            hls.startLoad();
+                            videoEl.play().catch(() => {});
+                        } else {
+                            initTile(i);
+                        }
                         break;
                 }
             } 
