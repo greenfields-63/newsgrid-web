@@ -211,6 +211,8 @@ async function initTile(i) {
                                 hls.nextLoadPosition = hls.liveSyncPosition;
                                 if (videoEl) videoEl.currentTime = hls.liveSyncPosition;
                             }
+                            const freshUrl = streamUrl + (streamUrl.includes('?') ? '&' : '?') + '_ts=' + Date.now();
+                            hls.loadSource(freshUrl);
                             hls.startLoad();
                             videoEl.play().catch(() => {});
                         } else {
@@ -227,6 +229,8 @@ async function initTile(i) {
                                 hls.nextLoadPosition = hls.liveSyncPosition;
                                 if (videoEl) videoEl.currentTime = hls.liveSyncPosition;
                             }
+                            const freshUrl = streamUrl + (streamUrl.includes('?') ? '&' : '?') + '_ts=' + Date.now();
+                            hls.loadSource(freshUrl);
                             hls.startLoad();
                             videoEl.play().catch(() => {});
                         } else {
