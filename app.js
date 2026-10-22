@@ -2,6 +2,26 @@
  * NewsGrid Extension Main Application Script
  */
 
+const debugLogs = [];
+function logDebug(level, message, data = {}) {
+    const entry = { timestamp: new Date().toISOString(), level, message, data };
+    debugLogs.push(entry);
+    console.log(`[NewsGrid Debug][${level}]`, message, data);
+}
+
+window.downloadNewsGridLogs = function() {
+    const text = debugLogs.map(l => `[${l.timestamp}] [${l.level}] ${l.message} ${JSON.stringify(l.data)}`).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `newsgrid-debug-logs-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+
 const gistUrl = "https://gist.githubusercontent.com/greenfields-63/47648eee6d12acaa2ae5146a10d02b33/raw/channels.json";
 let availableChannels = [];
 let selectedChannels = [];
@@ -180,6 +200,7 @@ async function initTile(i) {
         }
 
         hls.on(Hls.Events.ERROR, async (event, data) => {
+            logDebug('ERROR', 'HLS Error', { tile: i, channel: channel.name, type: data.type, details: data.details, fatal: data.fatal, url: data.url, response: data.response });
             if (data.fatal) {
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
@@ -193,8 +214,6 @@ async function initTile(i) {
                         break;
                 }
             } 
-            // FIXED: Removed the else-if block that checked for 'bufferStalledError' and 'fragLoadError'
-            // Now hls.js will handle these non-fatal buffering events natively.
         });
         hlsInstances[i] = hls;
     } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
@@ -300,6 +319,10 @@ document.getElementById('save-channels').addEventListener('click', () => {
 });
 
 fetchGistChannels();
+
+document.getElementById('download-logs')?.addEventListener('click', () => {
+    window.downloadNewsGridLogs();
+});
 
 // Universal playback stall & freeze recovery watchdog
 setInterval(() => {
