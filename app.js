@@ -116,6 +116,7 @@ function loadSavedSelection() {
 }
 
 let stallCounts = [0, 0, 0, 0];
+let errorRetryCounts = [0, 0, 0, 0];
 
 async function initTile(i) {
     if (hlsInstances[i]) {
@@ -199,6 +200,10 @@ async function initTile(i) {
             });
         }
 
+        hls.on(Hls.Events.FRAG_LOADED, () => {
+            errorRetryCounts[i] = 0;
+        });
+
         hls.on(Hls.Events.ERROR, async (event, data) => {
             logDebug('ERROR', 'HLS Error', { tile: i, channel: channel.name, type: data.type, details: data.details, fatal: data.fatal, url: data.url, response: data.response });
             const isCnn = channel.url.includes("cloudfront.net");
@@ -206,19 +211,31 @@ async function initTile(i) {
             if (data.fatal) {
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                    case Hls.ErrorTypes.MEDIA_ERROR:
-                        if (isCnn) {
-                            // Let hls.js handle its internal media state recovery naturally
-                            hls.recoverMediaError();
-                            
-                            // Simply append the cache-buster and reload the source.
-                            const freshUrl = streamUrl + (streamUrl.includes('?') ? '&' : '?') + '_ts=' + Date.now();
-                            hls.loadSource(freshUrl);
-                            hls.startLoad();
-                            videoEl.play().catch(() => {});
-                        } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                            initTile(i);
+                        errorRetryCounts[i]++;
+                        if (errorRetryCounts[i] <= 4) {
+                            const delayMs = 1000 * Math.pow(2, errorRetryCounts[i]); // 2s, 4s, 8s, 16s
+                            console.log(`[NewsGrid] Network error on tile ${i}. Retrying in ${delayMs}ms (Attempt ${errorRetryCounts[i]}/4)`);
+                            setTimeout(() => {
+                                if (hlsInstances[i] !== hls) return;
+                                if (isCnn) {
+                                    const freshUrl = streamUrl + (streamUrl.includes('?') ? '&' : '?') + '_ts=' + Date.now();
+                                    hls.loadSource(freshUrl);
+                                    hls.startLoad();
+                                    videoEl.play().catch(() => {});
+                                } else {
+                                    initTile(i);
+                                }
+                            }, delayMs);
+                        } else {
+                            console.error(`[NewsGrid] Fatal network error on tile ${i} after 4 retries. Aborting.`);
+                            hls.destroy();
+                            hlsInstances[i] = null;
+                            if (labelEl) labelEl.textContent = channel.name + " (Connection Failed)";
                         }
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.log("[NewsGrid] Recovering media error.");
+                        hls.recoverMediaError();
                         break;
                     default:
                         if (isCnn) {
@@ -352,13 +369,11 @@ setInterval(() => {
         if (v && h) {
             if (!v.paused && v.readyState < 3) {
                 stallCounts[i]++;
-                // Increased threshold from 2 to 5 to avoid premature restarts during normal buffering
                 if (stallCounts[i] >= 5) {
                     stallCounts[i] = 0;
                     initTile(i);
                 } else {
                     h.startLoad();
-                    // Removed h.recoverMediaError() here so it doesn't break state while buffering natively
                     v.play().catch(() => {});
                 }
             } else {
