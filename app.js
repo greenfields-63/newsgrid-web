@@ -126,6 +126,7 @@ async function initTile(i) {
     }
 
     if (Hls.isSupported()) {
+        const isCnn = channel.url.includes("cloudfront.net");
         const isKan = channel.name.includes("Kan 11");
         const hlsConfig = {
             enableWorker: true,
@@ -134,13 +135,13 @@ async function initTile(i) {
             liveSyncDurationCount: isKan ? 4 : 2,
             liveMaxLatencyDurationCount: isKan ? 15 : 8,
             maxLiveSyncPlaybackRate: 1.1,
-            maxBufferLength: 30,
-            maxMaxBufferLength: 60,
+            maxBufferLength: isCnn ? 60 : 30,
+            maxMaxBufferLength: isCnn ? 120 : 60,
             abrEwmaDefaultEstimate: 2000000,
             startLevel: 0,
             autoStartLoad: true,
-            fragLoadMaxRetry: 6,
-            fragLoadRetryDelay: 1000,
+            fragLoadMaxRetry: isCnn ? 10 : 6,
+            fragLoadRetryDelay: isCnn ? 500 : 1000,
             maxLoadingDelay: 4,
             xhrSetup: (xhr, url) => {
                 if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
