@@ -207,8 +207,9 @@ async function initTile(i) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
                         if (isCnn) {
                             hls.recoverMediaError();
-                            if (hls.liveSyncPosition && videoEl) {
-                                videoEl.currentTime = hls.liveSyncPosition;
+                            if (hls.liveSyncPosition) {
+                                hls.nextLoadPosition = hls.liveSyncPosition;
+                                if (videoEl) videoEl.currentTime = hls.liveSyncPosition;
                             }
                             hls.startLoad();
                             videoEl.play().catch(() => {});
@@ -222,8 +223,9 @@ async function initTile(i) {
                     default:
                         if (isCnn) {
                             hls.recoverMediaError();
-                            if (hls.liveSyncPosition && videoEl) {
-                                videoEl.currentTime = hls.liveSyncPosition;
+                            if (hls.liveSyncPosition) {
+                                hls.nextLoadPosition = hls.liveSyncPosition;
+                                if (videoEl) videoEl.currentTime = hls.liveSyncPosition;
                             }
                             hls.startLoad();
                             videoEl.play().catch(() => {});
