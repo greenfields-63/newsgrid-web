@@ -2,26 +2,6 @@
  * NewsGrid Extension Main Application Script
  */
 
-const debugLogs = [];
-function logDebug(level, message, data = {}) {
-    const entry = { timestamp: new Date().toISOString(), level, message, data };
-    debugLogs.push(entry);
-    console.log(`[NewsGrid Debug][${level}]`, message, data);
-}
-
-window.downloadNewsGridLogs = function() {
-    const text = debugLogs.map(l => `[${l.timestamp}] [${l.level}] ${l.message} ${JSON.stringify(l.data)}`).join('\n');
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `newsgrid-debug-logs-${Date.now()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-};
-
 const gistUrl = "https://gist.githubusercontent.com/greenfields-63/47648eee6d12acaa2ae5146a10d02b33/raw/channels.json";
 let availableChannels = [];
 let selectedChannels = [];
@@ -116,7 +96,6 @@ function loadSavedSelection() {
 }
 
 let stallCounts = [0, 0, 0, 0];
-let errorRetryCounts = [0, 0, 0, 0];
 
 async function initTile(i) {
     if (hlsInstances[i]) {
@@ -147,22 +126,21 @@ async function initTile(i) {
     }
 
     if (Hls.isSupported()) {
-        const isCnn = channel.url.includes("cloudfront.net");
         const isKan = channel.name.includes("Kan 11");
         const hlsConfig = {
             enableWorker: true,
             debug: false,
             lowLatencyMode: false,
-            liveSyncDurationCount: isCnn ? 6 : (isKan ? 4 : 2),
-            liveMaxLatencyDurationCount: isCnn ? 18 : (isKan ? 15 : 8),
+            liveSyncDurationCount: isKan ? 4 : 2,
+            liveMaxLatencyDurationCount: isKan ? 15 : 8,
             maxLiveSyncPlaybackRate: 1.1,
-            maxBufferLength: isCnn ? 60 : 30,
-            maxMaxBufferLength: isCnn ? 120 : 60,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
             abrEwmaDefaultEstimate: 2000000,
             startLevel: 0,
             autoStartLoad: true,
-            fragLoadMaxRetry: isCnn ? 10 : 6,
-            fragLoadRetryDelay: isCnn ? 500 : 1000,
+            fragLoadMaxRetry: 6,
+            fragLoadRetryDelay: 1000,
             maxLoadingDelay: 4,
             xhrSetup: (xhr, url) => {
                 if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
@@ -200,56 +178,22 @@ async function initTile(i) {
             });
         }
 
-        hls.on(Hls.Events.FRAG_LOADED, () => {
-            errorRetryCounts[i] = 0;
-        });
-
         hls.on(Hls.Events.ERROR, async (event, data) => {
-            logDebug('ERROR', 'HLS Error', { tile: i, channel: channel.name, type: data.type, details: data.details, fatal: data.fatal, url: data.url, response: data.response });
-            const isCnn = channel.url.includes("cloudfront.net");
-            
             if (data.fatal) {
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                        errorRetryCounts[i]++;
-                        if (errorRetryCounts[i] <= 4) {
-                            const delayMs = 1000 * Math.pow(2, errorRetryCounts[i]); // 2s, 4s, 8s, 16s
-                            console.log(`[NewsGrid] Network error on tile ${i}. Retrying in ${delayMs}ms (Attempt ${errorRetryCounts[i]}/4)`);
-                            setTimeout(() => {
-                                if (hlsInstances[i] !== hls) return;
-                                if (isCnn) {
-                                    const freshUrl = streamUrl + (streamUrl.includes('?') ? '&' : '?') + '_ts=' + Date.now();
-                                    hls.loadSource(freshUrl);
-                                    hls.startLoad();
-                                    videoEl.play().catch(() => {});
-                                } else {
-                                    initTile(i);
-                                }
-                            }, delayMs);
-                        } else {
-                            console.error(`[NewsGrid] Fatal network error on tile ${i} after 4 retries. Aborting.`);
-                            hls.destroy();
-                            hlsInstances[i] = null;
-                            if (labelEl) labelEl.textContent = channel.name + " (Connection Failed)";
-                        }
+                        initTile(i);
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
-                        console.log("[NewsGrid] Recovering media error.");
                         hls.recoverMediaError();
                         break;
                     default:
-                        if (isCnn) {
-                            hls.recoverMediaError();
-                            const freshUrl = streamUrl + (streamUrl.includes('?') ? '&' : '?') + '_ts=' + Date.now();
-                            hls.loadSource(freshUrl);
-                            hls.startLoad();
-                            videoEl.play().catch(() => {});
-                        } else {
-                            initTile(i);
-                        }
+                        initTile(i);
                         break;
                 }
-            } 
+            } else if (data.details === 'bufferStalledError' || data.details === 'fragLoadError') {
+                initTile(i);
+            }
         });
         hlsInstances[i] = hls;
     } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
@@ -356,10 +300,6 @@ document.getElementById('save-channels').addEventListener('click', () => {
 
 fetchGistChannels();
 
-document.getElementById('download-logs')?.addEventListener('click', () => {
-    window.downloadNewsGridLogs();
-});
-
 // Universal playback stall & freeze recovery watchdog
 setInterval(() => {
     for (let i = 0; i < 4; i++) {
@@ -369,11 +309,12 @@ setInterval(() => {
         if (v && h) {
             if (!v.paused && v.readyState < 3) {
                 stallCounts[i]++;
-                if (stallCounts[i] >= 5) {
+                if (stallCounts[i] >= 2) {
                     stallCounts[i] = 0;
                     initTile(i);
                 } else {
                     h.startLoad();
+                    h.recoverMediaError();
                     v.play().catch(() => {});
                 }
             } else {
