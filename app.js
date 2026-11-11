@@ -127,6 +127,24 @@ async function initTile(i) {
 
     if (Hls.isSupported()) {
         const isKan = channel.name.includes("Kan 11");
+
+        // Custom Loader class to automatically append Mako Akamai token to all sub-manifests and fragments
+        class MakoHlsLoader extends Hls.DefaultConfig.loader {
+            constructor(config) {
+                super(config);
+                const parentLoad = this.load.bind(this);
+                this.load = function(context, configCallbacks, callbacks) {
+                    if (context && context.url && (context.url.includes("mako.co.il") || context.url.includes("akamaized.net"))) {
+                        if (makoToken && !context.url.includes("hdnea")) {
+                            const sep = context.url.includes("?") ? "&" : "?";
+                            context.url = context.url + sep + makoToken;
+                        }
+                    }
+                    parentLoad(context, configCallbacks, callbacks);
+                };
+            }
+        }
+
         const hlsConfig = {
             enableWorker: true,
             debug: false,
@@ -142,16 +160,8 @@ async function initTile(i) {
             fragLoadMaxRetry: 6,
             fragLoadRetryDelay: 1000,
             maxLoadingDelay: 4,
-            xhrSetup: (xhr, url) => {
-                if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
-                    xhr.withCredentials = true;
-                    if (makoToken && !url.includes("hdnea")) {
-                        const sep = url.includes("?") ? "&" : "?";
-                        url = url + sep + makoToken;
-                    }
-                }
-                xhr.open('GET', url, true);
-            }
+            fLoader: MakoHlsLoader,
+            pLoader: MakoHlsLoader
         };
         videoEl.muted = (i !== activeAudioIndex);
         const hls = new Hls(hlsConfig);
