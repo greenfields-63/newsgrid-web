@@ -114,39 +114,12 @@ async function initTile(i) {
     if (labelEl) labelEl.textContent = channel.name;
 
     let streamUrl = channel.url;
-    let makoToken = null;
     if (channel.type === "mako") {
-        const makoFullUrl = await getMakoTicket(channel);
-        if (makoFullUrl && makoFullUrl.includes("?")) {
-            streamUrl = makoFullUrl;
-            makoToken = makoFullUrl.substring(makoFullUrl.indexOf("?") + 1);
-        } else {
-            streamUrl = makoFullUrl;
-        }
+        streamUrl = await getMakoTicket(channel);
     }
 
     if (Hls.isSupported()) {
         const isKan = channel.name.includes("Kan 11");
-
-        // Custom Loader class to automatically append Mako Akamai token and set withCredentials on all sub-manifests and fragments
-        class MakoHlsLoader extends Hls.DefaultConfig.loader {
-            constructor(config) {
-                super(config);
-                const parentLoad = this.load.bind(this);
-                this.load = function(context, configCallbacks, callbacks) {
-                    if (context && context.url && (context.url.includes("mako.co.il") || context.url.includes("akamaized.net"))) {
-                        if (makoToken && !context.url.includes("hdnea")) {
-                            const sep = context.url.includes("?") ? "&" : "?";
-                            context.url = context.url + sep + makoToken;
-                        }
-                    }
-                    parentLoad(context, configCallbacks, callbacks);
-                    if (this.xhr) {
-                        this.xhr.withCredentials = true;
-                    }
-                };
-            }
-        }
 
         const hlsConfig = {
             enableWorker: true,
@@ -163,10 +136,10 @@ async function initTile(i) {
             fragLoadMaxRetry: 6,
             fragLoadRetryDelay: 1000,
             maxLoadingDelay: 4,
-            fLoader: MakoHlsLoader,
-            pLoader: MakoHlsLoader,
             xhrSetup: (xhr, url) => {
-                xhr.withCredentials = true;
+                if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
+                    xhr.withCredentials = true;
+                }
             }
         };
         videoEl.muted = (i !== activeAudioIndex);
