@@ -3,6 +3,9 @@
  */
 
 const gistUrl = "https://gist.githubusercontent.com/greenfields-63/47648eee6d12acaa2ae5146a10d02b33/raw/channels.json";
+const makoBaseUrl = "https://mako-streaming.akamaized.net";
+const currentMakoLp = "/stream/hls/live/20000821/k12rh-dvr/index.m3u8?b-in-range=0-800";
+const legacyMakoLp = "/stream/hls/live/2033791/k12n12wad/index.m3u8";
 let availableChannels = [];
 let selectedChannels = [];
 let hlsInstances = [null, null, null, null];
@@ -16,9 +19,11 @@ async function fetchGistChannels() {
             if (Array.isArray(data) && data.length > 0) {
                 availableChannels = data.filter(c => c.enabled !== false).map(c => {
                     if (c.type === "mako") {
-                        c.url = "https://mako-streaming.akamaized.net/stream/hls/live/2033791/k12n12wad/index.m3u8";
                         c.params = c.params || {};
-                        c.params.lp = "/stream/hls/live/2033791/k12n12wad/index.m3u8";
+                        if (!c.params.lp || c.params.lp === legacyMakoLp) {
+                            c.params.lp = currentMakoLp;
+                        }
+                        c.url = `${makoBaseUrl}${c.params.lp}`;
                     }
                     return c;
                 });
@@ -30,7 +35,7 @@ async function fetchGistChannels() {
     if (availableChannels.length === 0) {
         availableChannels = [
             { name: "Kan 11", url: "https://kancdn.medonecdn.net/livehls/oil/kancdn-live/live/kan11/live.livx/playlist.m3u8", referer: "https://www.kan.org.il/" },
-            { name: "Channel 12", url: "https://mako-streaming.akamaized.net/stream/hls/live/2033791/k12n12wad/index.m3u8", referer: "https://www.mako.co.il/", type: "mako", params: { lp: "/stream/hls/live/2033791/k12n12wad/index.m3u8", dv: "1e2258089b67f510VgnVCM2000002a0c10acRCRD" } },
+            { name: "Channel 12", url: `${makoBaseUrl}${currentMakoLp}`, referer: "https://www.mako.co.il/", type: "mako", params: { lp: currentMakoLp, dv: "1e2258089b67f510VgnVCM2000002a0c10acRCRD" } },
             { name: "Reshet 13", url: "https://d18b0e6mopany4.cloudfront.net/out/v1/2f2bc414a3db4698a8e94b89eaf2da2a/index.m3u8", referer: "https://13tv.co.il/" },
             { name: "Channel 14", url: "https://n-121-6.il.cdn-redge.media/livehls/oil/ch14/live/ch14/live.livx/playlist.m3u8", referer: "https://www.now14.co.il/" }
         ];
@@ -40,7 +45,7 @@ async function fetchGistChannels() {
 
 async function getMakoTicket(channel) {
     try {
-        const lp = channel.params?.lp || "/stream/hls/live/2033791/k12n12wad/index.m3u8";
+        const lp = channel.params?.lp || currentMakoLp;
         const dv = channel.params?.dv || "1e2258089b67f510VgnVCM2000002a0c10acRCRD";
 
         return new Promise((resolve) => {
@@ -62,7 +67,8 @@ async function getMakoTicket(channel) {
                     .then(data => {
                         const ticket = data.tickets?.[0]?.ticket;
                         if (ticket) {
-                            resolve(`https://mako-streaming.akamaized.net${lp}?${ticket}`);
+                            const separator = lp.includes("?") ? "&" : "?";
+                            resolve(`${makoBaseUrl}${lp}${separator}${ticket}`);
                         } else {
                             resolve(channel.url);
                         }
