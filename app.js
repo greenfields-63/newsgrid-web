@@ -135,12 +135,7 @@ async function initTile(i) {
             autoStartLoad: true,
             fragLoadMaxRetry: 6,
             fragLoadRetryDelay: 1000,
-            maxLoadingDelay: 4,
-            xhrSetup: (xhr, url) => {
-                if (url.includes("mako.co.il") || url.includes("akamaized.net")) {
-                    xhr.withCredentials = true;
-                }
-            }
+            maxLoadingDelay: 4
         };
         videoEl.muted = (i !== activeAudioIndex);
         const hls = new Hls(hlsConfig);
