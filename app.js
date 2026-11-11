@@ -128,7 +128,7 @@ async function initTile(i) {
     if (Hls.isSupported()) {
         const isKan = channel.name.includes("Kan 11");
 
-        // Custom Loader class to automatically append Mako Akamai token to all sub-manifests and fragments
+        // Custom Loader class to automatically append Mako Akamai token and set withCredentials on all sub-manifests and fragments
         class MakoHlsLoader extends Hls.DefaultConfig.loader {
             constructor(config) {
                 super(config);
@@ -141,6 +141,9 @@ async function initTile(i) {
                         }
                     }
                     parentLoad(context, configCallbacks, callbacks);
+                    if (this.xhr) {
+                        this.xhr.withCredentials = true;
+                    }
                 };
             }
         }
@@ -161,7 +164,10 @@ async function initTile(i) {
             fragLoadRetryDelay: 1000,
             maxLoadingDelay: 4,
             fLoader: MakoHlsLoader,
-            pLoader: MakoHlsLoader
+            pLoader: MakoHlsLoader,
+            xhrSetup: (xhr, url) => {
+                xhr.withCredentials = true;
+            }
         };
         videoEl.muted = (i !== activeAudioIndex);
         const hls = new Hls(hlsConfig);
